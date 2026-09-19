@@ -1,0 +1,8 @@
+# Asunciones del Sistema (Assumptions)
+
+Dado que el requerimiento inicial omite ciertos detalles operativos necesarios para la construcción lógica del sistema, se han tomado las siguientes decisiones y asunciones:
+
+1.  **Horario Operativo:** Se asume que la clínica veterinaria tiene un horario laboral estándar de **8:00 AM a 6:00 PM**. Este dato es fundamental para que el backend pueda calcular y devolver los "espacios libres" en la agenda del día.
+2.  **Límite de Cancelación:** Se asume que el "cierto momento antes de la hora" para cancelar una cita sin penalidad es de **2 horas**. Si se cancela con menos de 2 horas de anticipación a la cita programada, el estado pasará obligatoriamente a "Inasistencia".
+3.  **Duración de Consultas:** Se asume que la duración de cada tipo de consulta se medirá en **minutos enteros** (ej. 30, 45 o 60 minutos) para facilitar el cálculo matemático de solapamiento en la base de datos (Hora Inicio + Duración = Hora Fin).
+4.  **Invariabilidad del Historial:** Se asume que una "atención registrada" (historial) está vinculada directamente a la mascota, garantizando que el borrado lógico o el marcado como "fallecida" no altere las atenciones pasadas.
