@@ -11,3 +11,20 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 
 ## Sesión 2: 2026-09-19
 *   **Qué pedí:** Analiza los requisitos del sistema veterinario. Propón entidades, estados, relaciones y casos de uso. No escribas código todavía. Identifica ambigüedades y supuestos.
+
+## Sesión 3: 2026-09-19
+*   **Qué pedí:** Crear los modelos de base de datos aplicando las restricciones y reglas del negocio.
+*   **Qué propuso el agente:** Crear los modelos `Owner`, `Pet`, `Professional`, `ConsultationType`, `Appointment` y `Visit`, junto con migraciones PostgreSQL.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se aplicaron estados controlados, protección del historial, cálculo de duración, horario laboral, bloqueo de mascotas fallecidas y restricción de solapamiento.
+*   **Qué quedó verificado:** `manage.py check`, migraciones aplicadas y conexión con PostgreSQL.
+
+## Sesión 4: 2026-09-19
+*   **Qué pedí:** Continuar la construcción en el orden recomendado.
+*   **Qué propuso el agente:** Centralizar las operaciones de citas y agenda en servicios Django, exponerlas mediante API REST y cubrirlas con pruebas de dominio e integración.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se implementaron creación y cancelación de citas, agenda diaria, espacios libres, historial y endpoints REST.
+*   **Qué quedó verificado:** `manage.py check` y 9 pruebas automatizadas exitosas.
+
+## Sesión 5: 2026-09-19
+*   **Qué pedí:** Actualizar la documentación antes de construir el frontend.
+*   **Qué decidió el agente:** Actualizar README, supuestos y bitácora, y crear el ADR 003 para registrar la validación en capas de las reglas de agenda.
+*   **Decisión (Aceptado/Rechazado):** Pendiente de revisión del usuario.

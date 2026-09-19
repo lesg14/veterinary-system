@@ -3,6 +3,9 @@
 ## Fecha
 2026-09-18
 
+## Estado
+Aceptado
+
 ## Contexto
 El sistema de la clínica veterinaria requiere manejar reglas de negocio transaccionales estrictas (cálculo de tiempos, prevención de solapamientos, restricciones por estado de la mascota) y presentar una interfaz interactiva para visualizar la agenda diaria. Con un límite estricto de una semana, la prioridad arquitectónica es minimizar el código repetitivo y maximizar el tiempo dedicado a la lógica de negocio.
 
@@ -27,3 +30,7 @@ Se establece una arquitectura cliente-servidor desacoplada utilizando **Django c
     *   Separación clara de responsabilidades: el backend actúa como guardián estricto de las reglas de negocio y el frontend se especializa en el renderizado del calendario.
 *   **Negativas (Riesgo):** 
     *   Se deben coordinar dos servidores locales independientes y gestionar las políticas de CORS. Se mitigará documentando los comandos de ejecución exactos en el `README.md`.
+
+## Estado de implementación
+
+La parte backend de esta decisión ya está implementada con Django, PostgreSQL y Django REST Framework. Incluye modelos, migraciones, servicios de citas, agenda diaria, historial y pruebas automatizadas. La aplicación Next.js continúa pendiente y será construida como cliente de la API REST.
