@@ -151,6 +151,7 @@ class Appointment(models.Model):
             ExclusionConstraint(
                 name="scheduled_appointments_do_not_overlap",
                 expressions=[
+                    ("professional", RangeOperators.EQUAL),
                     (
                         Func(
                             "starts_at",
