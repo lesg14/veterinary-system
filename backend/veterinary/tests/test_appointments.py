@@ -157,5 +157,13 @@ class AppointmentServiceTests(TestCase):
         )
         self.assertEqual(
             professional_schedule["free_slots"][0]["ends_at"].time(),
-            time(9, 0),
+            time(8, 30),
         )
+
+    def test_empty_daily_schedule_has_twenty_half_hour_blocks(self):
+        schedule = get_daily_schedule(
+            day=datetime(2026, 9, 22).date(),
+            professional=self.professional,
+        )
+
+        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 20)

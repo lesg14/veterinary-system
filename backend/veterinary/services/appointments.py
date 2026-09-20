@@ -34,6 +34,17 @@ def _clinic_day_bounds(day: date) -> tuple[datetime, datetime]:
     return opening, closing
 
 
+def _split_into_free_blocks(start: datetime, end: datetime) -> list[dict]:
+    block_size = timedelta(minutes=30)
+    blocks = []
+    cursor = start
+    while cursor + block_size <= end:
+        block_end = cursor + block_size
+        blocks.append({"starts_at": cursor, "ends_at": block_end})
+        cursor = block_end
+    return blocks
+
+
 @transaction.atomic
 def create_appointment(
     *,
@@ -116,10 +127,10 @@ def get_daily_schedule(
         for appointment in current_appointments:
             appointment_start = max(timezone.localtime(appointment.starts_at), opening)
             if cursor < appointment_start:
-                free_slots.append({"starts_at": cursor, "ends_at": appointment_start})
+                free_slots.extend(_split_into_free_blocks(cursor, appointment_start))
             cursor = max(cursor, timezone.localtime(appointment.ends_at))
         if cursor < closing:
-            free_slots.append({"starts_at": cursor, "ends_at": closing})
+            free_slots.extend(_split_into_free_blocks(cursor, closing))
 
         schedules.append(
             {

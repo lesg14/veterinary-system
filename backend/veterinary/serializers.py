@@ -5,6 +5,14 @@ from veterinary.services.appointments import create_appointment
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source="pet.name", read_only=True)
+    professional_name = serializers.CharField(source="professional.full_name", read_only=True)
+    consultation_type_name = serializers.CharField(source="consultation_type.name", read_only=True)
+    consultation_duration_minutes = serializers.IntegerField(
+        source="consultation_type.duration_minutes",
+        read_only=True,
+    )
+
     class Meta:
         model = Appointment
         fields = [
@@ -12,6 +20,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "pet",
             "professional",
             "consultation_type",
+            "pet_name",
+            "professional_name",
+            "consultation_type_name",
+            "consultation_duration_minutes",
             "starts_at",
             "ends_at",
             "status",
