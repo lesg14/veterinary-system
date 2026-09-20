@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from veterinary.models import Appointment, Owner, Pet, Professional, Visit
+from veterinary.models import Appointment, ConsultationType, Owner, Pet, Professional, Visit
 from veterinary.services.appointments import create_appointment
 
 
@@ -21,6 +21,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return create_appointment(**validated_data)
+
+    def update(self, instance, validated_data):
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        return instance
 
 
 class OwnerSerializer(serializers.ModelSerializer):
@@ -62,6 +68,22 @@ class ProfessionalSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
+
+
+class ConsultationTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultationType
+        fields = ["id", "name", "description", "duration_minutes", "is_active"]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        name = attrs.get("name", getattr(self.instance, "name", ""))
+        description = attrs.get("description", getattr(self.instance, "description", ""))
+        if name.strip().lower() == "otro" and not description.strip():
+            raise serializers.ValidationError(
+                {"description": "Debe describir el motivo cuando el tipo es Otro."}
+            )
+        return attrs
 
 
 class VisitSerializer(serializers.ModelSerializer):

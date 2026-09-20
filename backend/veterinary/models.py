@@ -111,6 +111,15 @@ class ConsultationType(models.Model):
         verbose_name = "tipo de consulta"
         verbose_name_plural = "tipos de consulta"
 
+    def clean(self):
+        super().clean()
+        if self.name.strip().lower() == "otro" and not self.description.strip():
+            raise ValidationError({"description": "Debe describir el motivo cuando el tipo es Otro."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 

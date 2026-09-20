@@ -110,3 +110,52 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         appointment_response = self.client.get(f"/api/agenda/?date=2026-09-21&professional_id={self.professional.id}")
         self.assertEqual(appointment_response.data["schedules"][0]["appointments"][0]["status"], "ATTENDED")
+
+    def test_consultation_type_other_requires_description(self):
+        response = self.client.post(
+            "/api/consultation-types/",
+            {"name": "Otro", "duration_minutes": 30},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("description", response.data)
+
+        response = self.client.post(
+            "/api/consultation-types/",
+            {
+                "name": "Otro",
+                "description": "Consulta solicitada por comportamiento inusual",
+                "duration_minutes": 30,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["description"], "Consulta solicitada por comportamiento inusual")
+
+    def test_appointment_can_be_rescheduled_and_recalculates_end(self):
+        appointment = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": self.starts_at.isoformat(),
+            },
+            format="json",
+        )
+        appointment_id = appointment.data["id"]
+
+        response = self.client.put(
+            f"/api/appointments/{appointment_id}/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": timezone.make_aware(datetime(2026, 9, 21, 11, 0)).isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["starts_at"], "2026-09-21T11:00:00-05:00")
+        self.assertEqual(response.data["ends_at"], "2026-09-21T11:30:00-05:00")
