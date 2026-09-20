@@ -10,6 +10,8 @@ Dado que el requerimiento inicial omite ciertos detalles operativos necesarios p
 6.  **Zona horaria:** Se utiliza `America/Bogota` para almacenar y presentar las fechas y horas de las citas. Los valores recibidos por la API deben incluir zona horaria.
 7.  **Profesionales activos:** Solo los profesionales activos pueden recibir nuevas citas. Los registros históricos se conservan aunque un profesional sea inactivado.
 8.  **Citas ocupadas:** La agenda considera como ocupados los estados `PROGRAMADA`, `ATENDIDA` e `INASISTENCIA`. Las citas `CANCELADA` liberan el espacio.
+9.  **Bloques de disponibilidad:** La disponibilidad se expresa en bloques de 30 minutos. Un día completo de 10 horas tiene exactamente **20 bloques libres** cuando no hay citas agendadas. El conteo por huecos contiguos se descarta para evitar subreportar la agenda.
+10. **Detalle humano de la cita:** Los usuarios no deben ver IDs en la vista de detalle o en la tarjeta de agenda; la interfaz debe mostrar nombre de mascota, nombre del profesional y tipo de consulta con duración legible.
 
 ## Decisiones aún pendientes
 
@@ -17,3 +19,4 @@ Dado que el requerimiento inicial omite ciertos detalles operativos necesarios p
 * Política para citas futuras cuando una mascota es marcada como fallecida.
 * Roles y permisos de los usuarios del sistema.
 * Notificaciones a propietarios y profesionales.
+* Integración con pagos, seguros y agenda multiclínica.

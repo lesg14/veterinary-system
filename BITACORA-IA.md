@@ -38,4 +38,15 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 ## Sesión 7: 2026-09-19
 *   **Qué pedí:** Actualizar los archivos Markdown y registrar la decisión tomada.
 *   **Qué decidió el agente:** Actualizar el estado real del README, cerrar la bitácora y crear el ADR 004 sobre el CRUD administrativo.
-*   **Decisión (Aceptado/Rechazado):** Pendiente de revisión del usuario.
+*   **Decisión (Aceptado/Rechazado):** Aceptado parcialmente. Se consolidó la documentación del proyecto y se cerró la validación de la capa de negocio de la agenda.
+
+## Sesión 8: 2026-09-19
+*   **Qué pedí:** Corregir la representación del tiempo libre y completar el módulo de tipos de consulta, además de habilitar el reagendamiento desde la cita.
+*   **Qué propuso el agente:** Dividir el espacio libre en bloques de 30 minutos, exponer `ConsultationType` con CRUD y un campo obligatorio para `Otro`, y reusar la API de citas para actualizar `starts_at` sin romper validaciones.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se implementó la regla de 20 espacios libres por jornada, la enumeración de tipos de consulta y el detalle de cita con nombre legible del paciente, profesional y tipo.
+*   **Qué quedó verificado:** `manage.py check`, pruebas de backend y build de Next.js exitosos. La agenda ahora cuenta espacios libres por bloque de 30 minutos y el detalle de la cita ya no expone IDs al usuario.
+
+## Sesión 9: 2026-09-20
+*   **Qué pedí:** Dejar registrado el estado real del proyecto en la documentación autorizada.
+*   **Qué decidió el agente:** Actualizar los documentos de contexto (`AGENTS.md`, `ASSUMPTIONS.md` y esta bitácora) con el estado verificado del sistema en producción local.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Los archivos quedaron alineados con la implementación real, no con la intención inicial del proyecto.
