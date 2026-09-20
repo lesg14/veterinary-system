@@ -53,6 +53,10 @@ type PetHistory = {
   visits: { id: number; attended_at: string; reason: string; diagnosis: string; treatment: string }[];
 };
 
+type PetOption = { id: number; name: string; species: string; breed: string; vital_status: string; is_active: boolean };
+type ProfessionalOption = { id: number; full_name: string; specialty: string };
+type ConsultationOption = { id: number; name: string; duration_minutes: number };
+
 const statusLabels: Record<Appointment["status"], string> = {
   SCHEDULED: "Confirmada",
   ATTENDED: "Atendida",
@@ -82,6 +86,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   async function loadAgenda() {
     setLoading(true);
@@ -138,10 +143,11 @@ export default function Home() {
         <div className={styles.dateTitle}><div><h2>{formatDate(selectedDate)}</h2><span>Horario de atención · 08:00 — 18:00</span></div><div className={styles.liveStatus}><span /> Agenda actualizada</div></div>
         <section className={styles.stats}><div className={styles.statCard}><div className={`${styles.statIcon} ${styles.coral}`}><CalendarDays size={18} /></div><div><span>Citas confirmadas</span><strong>{scheduledCount}</strong></div><small>para este día</small></div><div className={styles.statCard}><div className={`${styles.statIcon} ${styles.mint}`}><Clock3 size={18} /></div><div><span>Espacios libres</span><strong>{freeSlotsCount}</strong></div><small>bloques disponibles</small></div><div className={styles.statCard}><div className={`${styles.statIcon} ${styles.lilac}`}><FileText size={18} /></div><div><span>Atenciones realizadas</span><strong>{attendedCount}</strong></div><small>completadas hoy</small></div></section>
 
-        {loading ? <div className={styles.emptyState}><div className={styles.loader} /><p>Cargando agenda...</p></div> : error ? <div className={styles.errorState}><CircleAlert size={22} /><div><strong>No se pudo conectar con la agenda</strong><p>{error} Verifica que Django esté ejecutándose en el puerto 8000.</p></div><button onClick={loadAgenda}>Reintentar</button></div> : <CalendarBoard agenda={agenda} />}
+        {loading ? <div className={styles.emptyState}><div className={styles.loader} /><p>Cargando agenda...</p></div> : error ? <div className={styles.errorState}><CircleAlert size={22} /><div><strong>No se pudo conectar con la agenda</strong><p>{error} Verifica que Django esté ejecutándose en el puerto 8000.</p></div><button onClick={loadAgenda}>Reintentar</button></div> : <CalendarBoard agenda={agenda} onAppointmentClick={setSelectedAppointment} />}
       </section>
       {showNewAppointment && <AppointmentModal onClose={() => setShowNewAppointment(false)} onCreated={() => { setShowNewAppointment(false); loadAgenda(); }} />}
       {showHistory && <HistoryModal onClose={() => setShowHistory(false)} />}
+      {selectedAppointment && <AppointmentDetailModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} onSaved={() => { setSelectedAppointment(null); loadAgenda(); }} />}
     </main>
   );
 }
@@ -175,18 +181,33 @@ function ProfessionalSchedule({ schedule, color }: { schedule: Schedule; color: 
   return <article className={styles.professionalBlock}><div className={styles.professionalHeader}><div className={`${styles.professionalAvatar} ${styles[color]}`}>{schedule.professional.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div><h3>{schedule.professional}</h3><span><Stethoscope size={14} /> Medicina general</span></div><div className={styles.blockSummary}><strong>{schedule.appointments.length} {schedule.appointments.length === 1 ? "cita" : "citas"}</strong><span>{schedule.free_slots.length} espacios libres</span></div></div><div className={styles.timeline}>{schedule.appointments.length === 0 ? <div className={styles.noAppointments}>Sin citas programadas para este profesional.</div> : schedule.appointments.map((appointment) => <div className={styles.appointmentRow} key={appointment.id}><time>{formatTime(appointment.starts_at)}</time><div className={`${styles.appointmentCard} ${styles[color]}`}><div><strong>{appointment.status === "ATTENDED" ? "Atención registrada" : "Consulta veterinaria"}</strong><span>{statusLabels[appointment.status]} · Mascota #{appointment.pet}</span></div><span className={styles.appointmentTime}>{formatTime(appointment.starts_at)} — {formatTime(appointment.ends_at)}</span></div></div>)}</div>{schedule.free_slots.slice(0, 3).map((slot) => <div className={styles.freeSlot} key={`${slot.starts_at}-${slot.ends_at}`}><Clock3 size={14} /><span>Disponible</span><time>{formatTime(slot.starts_at)} — {formatTime(slot.ends_at)}</time><button aria-label="Agendar en este espacio">Agendar <Plus size={13} /></button></div>)}</article>;
 }
 
-function CalendarBoard({ agenda }: { agenda: AgendaResponse | null }) {
+function CalendarBoard({ agenda, onAppointmentClick }: { agenda: AgendaResponse | null; onAppointmentClick: (appointment: Appointment) => void }) {
   const slots = Array.from({ length: 21 }, (_, index) => {
     const totalMinutes = 8 * 60 + index * 30;
     return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
   });
-  return <section className={styles.calendarBoard} style={{ "--professional-count": String(Math.max(agenda?.schedules.length || 1, 1)) } as React.CSSProperties} aria-label="Calendario diario por profesional"><div className={styles.calendarHeader}><div className={styles.timeHeader}>Hora</div>{agenda?.schedules.map((schedule, index) => <div className={`${styles.calendarProfessional} ${styles[colors[index % colors.length]]}`} key={schedule.professional_id}><strong>{schedule.professional}</strong><span>{schedule.appointments.length} citas · {schedule.free_slots.length} libres</span></div>)}</div><div className={styles.calendarBody}><div className={styles.timeColumn}>{slots.slice(0, -1).map((slot) => <div className={styles.timeCell} key={slot}>{slot}</div>)}</div>{agenda?.schedules.map((schedule, index) => <div className={styles.professionalColumn} key={schedule.professional_id}><div className={styles.slotGrid}>{slots.slice(0, -1).map((slot) => <div className={styles.openCell} key={slot}><span>Libre</span></div>)}{schedule.appointments.map((appointment) => { const start = new Date(appointment.starts_at); const end = new Date(appointment.ends_at); const startMinutes = start.getHours() * 60 + start.getMinutes(); const endMinutes = end.getHours() * 60 + end.getMinutes(); const rowStart = Math.max(1, (startMinutes - 8 * 60) / 30 + 1); const rowSpan = Math.max(1, (endMinutes - startMinutes) / 30); return <div className={`${styles.calendarAppointment} ${styles[colors[index % colors.length]]} ${appointment.status === "ATTENDED" ? styles.attended : ""}`} key={appointment.id} style={{ gridRow: `${rowStart} / span ${rowSpan}` }}><strong>{appointment.status === "ATTENDED" ? "Atención registrada" : "Cita programada"}</strong><span>Mascota #{appointment.pet}</span><small>{formatTime(appointment.starts_at)} — {formatTime(appointment.ends_at)}</small></div>; })}</div></div>)}</div><div className={styles.calendarLegend}><span><i className={styles.legendFree} /> Espacio libre</span><span><i className={styles.legendBooked} /> Cita ocupada</span><span><i className={styles.legendAttended} /> Atención realizada</span></div></section>;
+  return <section className={styles.calendarBoard} style={{ "--professional-count": String(Math.max(agenda?.schedules.length || 1, 1)) } as React.CSSProperties} aria-label="Calendario diario por profesional"><div className={styles.calendarHeader}><div className={styles.timeHeader}>Hora</div>{agenda?.schedules.map((schedule, index) => <div className={`${styles.calendarProfessional} ${styles[colors[index % colors.length]]}`} key={schedule.professional_id}><strong>{schedule.professional}</strong><span>{schedule.appointments.length} citas · {schedule.free_slots.length} libres</span></div>)}</div><div className={styles.calendarBody}><div className={styles.timeColumn}>{slots.slice(0, -1).map((slot) => <div className={styles.timeCell} key={slot}>{slot}</div>)}</div>{agenda?.schedules.map((schedule, index) => <div className={styles.professionalColumn} key={schedule.professional_id}><div className={styles.slotGrid}>{slots.slice(0, -1).map((slot) => <div className={styles.openCell} key={slot}><span>Libre</span></div>)}{schedule.appointments.map((appointment) => { const start = new Date(appointment.starts_at); const end = new Date(appointment.ends_at); const startMinutes = start.getHours() * 60 + start.getMinutes(); const endMinutes = end.getHours() * 60 + end.getMinutes(); const rowStart = Math.max(1, (startMinutes - 8 * 60) / 30 + 1); const rowSpan = Math.max(1, (endMinutes - startMinutes) / 30); return <button className={`${styles.calendarAppointment} ${styles[colors[index % colors.length]]} ${appointment.status === "ATTENDED" ? styles.attended : ""}`} key={appointment.id} style={{ gridRow: `${rowStart} / span ${rowSpan}` }} onClick={() => onAppointmentClick(appointment)}><strong>{appointment.status === "ATTENDED" ? "Atención registrada" : "Cita programada"}</strong><span>Mascota #{appointment.pet}</span><small>{formatTime(appointment.starts_at)} — {formatTime(appointment.ends_at)}</small></button>; })}</div></div>)}</div><div className={styles.calendarLegend}><span><i className={styles.legendFree} /> Espacio libre</span><span><i className={styles.legendBooked} /> Cita ocupada</span><span><i className={styles.legendAttended} /> Atención realizada</span></div></section>;
 }
 
 function AppointmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ pet: "", professional: "", consultation_type: "", starts_at: "" });
+  const [pets, setPets] = useState<PetOption[]>([]);
+  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
+  const [consultationTypes, setConsultationTypes] = useState<ConsultationOption[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/pets/").then((response) => response.json()),
+      fetch("/api/professionals/").then((response) => response.json()),
+      fetch("/api/consultation-types/").then((response) => response.json()),
+    ]).then(([petData, professionalData, consultationData]) => {
+      setPets(petData.filter((pet: PetOption) => pet.vital_status === "ALIVE" && pet.is_active !== false));
+      setProfessionals(professionalData.filter((professional: ProfessionalOption & { is_active?: boolean }) => professional.is_active !== false));
+      setConsultationTypes(consultationData);
+    }).catch(() => setError("No fue posible cargar las opciones desde la base de datos."));
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -199,5 +220,39 @@ function AppointmentModal({ onClose, onCreated }: { onClose: () => void; onCreat
     } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "No se pudo crear la cita."); } finally { setSaving(false); }
   }
 
-  return <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-appointment-title"><div className={styles.modalHeader}><div><span className={styles.eyebrow}>AGENDA</span><h2 id="new-appointment-title">Nueva cita</h2></div><button className={styles.iconButton} onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div><form onSubmit={submit} className={styles.form}><label>Mascota<input required value={form.pet} onChange={(event) => setForm({ ...form, pet: event.target.value })} placeholder="ID de mascota" /></label><label>Profesional<input required value={form.professional} onChange={(event) => setForm({ ...form, professional: event.target.value })} placeholder="ID de profesional" /></label><label>Tipo de consulta<input required value={form.consultation_type} onChange={(event) => setForm({ ...form, consultation_type: event.target.value })} placeholder="ID del tipo de consulta" /></label><label>Inicio<input required type="datetime-local" value={form.starts_at} onChange={(event) => setForm({ ...form, starts_at: event.target.value })} /></label>{error && <div className={styles.formError}><CircleAlert size={16} />{error}</div>}<button className={styles.primaryButton} disabled={saving}>{saving ? "Guardando..." : "Crear cita"}</button></form></section></div>;
+  return <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-appointment-title"><div className={styles.modalHeader}><div><span className={styles.eyebrow}>AGENDA</span><h2 id="new-appointment-title">Nueva cita</h2></div><button className={styles.iconButton} onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div><form onSubmit={submit} className={styles.form}><SearchableSelect label="Mascota" placeholder="Buscar mascota..." value={form.pet} options={pets.map((pet) => ({ value: String(pet.id), label: `${pet.name} · ${pet.species}`, detail: pet.breed || "Sin raza registrada" }))} onChange={(value) => setForm({ ...form, pet: value })} /><SearchableSelect label="Profesional" placeholder="Buscar profesional..." value={form.professional} options={professionals.map((professional) => ({ value: String(professional.id), label: professional.full_name, detail: professional.specialty || "Medicina general" }))} onChange={(value) => setForm({ ...form, professional: value })} /><SearchableSelect label="Tipo de consulta" placeholder="Buscar tipo de consulta..." value={form.consultation_type} options={consultationTypes.map((consultation) => ({ value: String(consultation.id), label: consultation.name, detail: `${consultation.duration_minutes} minutos` }))} onChange={(value) => setForm({ ...form, consultation_type: value })} /><label>Inicio<input required type="datetime-local" value={form.starts_at} onChange={(event) => setForm({ ...form, starts_at: event.target.value })} /></label>{error && <div className={styles.formError}><CircleAlert size={16} />{error}</div>}<button className={styles.primaryButton} disabled={saving || !pets.length || !professionals.length || !consultationTypes.length}>{saving ? "Guardando..." : "Crear cita"}</button></form></section></div>;
+}
+
+function AppointmentDetailModal({ appointment, onClose, onSaved }: { appointment: Appointment; onClose: () => void; onSaved: () => void }) {
+  const [startsAt, setStartsAt] = useState(appointment.starts_at.slice(0, 16));
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function reschedule(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const response = await fetch(`/api/appointments/${appointment.id}/`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pet: appointment.pet, professional: appointment.professional, consultation_type: appointment.consultation_type, starts_at: new Date(startsAt).toISOString(), notes: appointment.notes || "" }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      setError(Object.values(body || {}).flat().join(" ") || "No se pudo reagendar la cita.");
+      setSaving(false);
+      return;
+    }
+    onSaved();
+  }
+
+  return <div className={styles.modalBackdrop} role="presentation"><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="appointment-detail-title"><div className={styles.modalHeader}><div><span className={styles.eyebrow}>DETALLE DE CITA</span><h2 id="appointment-detail-title">Cita #{appointment.id}</h2></div><button className={styles.iconButton} onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div><div className={styles.appointmentDetail}><div><span>Estado</span><strong>{statusLabels[appointment.status]}</strong></div><div><span>Mascota</span><strong>#{appointment.pet}</strong></div><div><span>Profesional</span><strong>#{appointment.professional}</strong></div><div><span>Tipo de consulta</span><strong>#{appointment.consultation_type}</strong></div></div>{appointment.status === "SCHEDULED" ? <form onSubmit={reschedule} className={styles.form}><label>Nuevo día y hora<input required type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label><small className={styles.modalHint}>La duración se conserva desde el tipo de consulta y el backend volverá a validar el solapamiento.</small>{error && <div className={styles.formError}><CircleAlert size={16} />{error}</div>}<button className={styles.primaryButton} disabled={saving}>{saving ? "Guardando..." : "Reagendar cita"}</button></form> : <div className={styles.detailNotice}>Esta cita no está programada y no puede reagendarse.</div>}</section></div>;
+}
+
+function SearchableSelect({ label, placeholder, value, options, onChange }: { label: string; placeholder: string; value: string; options: { value: string; label: string; detail: string }[]; onChange: (value: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
+  const filteredOptions = options.filter((option) => `${option.label} ${option.detail}`.toLowerCase().includes(query.toLowerCase()));
+  return <div className={styles.searchableField}><label>{label}<div className={styles.searchInputWrap}><Search size={15} /><input required={!value} value={open ? query : selected?.label || ""} placeholder={placeholder} onFocus={() => { setOpen(true); setQuery(""); }} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onBlur={() => setTimeout(() => setOpen(false), 150)} /></div></label>{open && <div className={styles.searchOptions}>{filteredOptions.length ? filteredOptions.map((option) => <button type="button" key={option.value} onMouseDown={(event) => event.preventDefault()} onClick={() => { onChange(option.value); setQuery(""); setOpen(false); }}><strong>{option.label}</strong><span>{option.detail}</span></button>) : <span className={styles.noOptions}>No hay coincidencias</span>}</div>}</div>;
 }

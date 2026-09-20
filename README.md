@@ -34,6 +34,8 @@ Endpoints disponibles:
 * `GET|PUT|DELETE /api/pets/{id}/`: consultar, actualizar y eliminar una mascota.
 * `GET|POST /api/professionals/`: listar y crear profesionales.
 * `GET|PUT|DELETE /api/professionals/{id}/`: consultar, actualizar y eliminar un profesional.
+* `GET|POST /api/consultation-types/`: listar y crear tipos de consulta.
+* `GET|PUT|DELETE /api/consultation-types/{id}/`: consultar, actualizar y eliminar un tipo de consulta.
 
 La agenda usa el horario asumido de 08:00 a 18:00 y devuelve los espacios libres por profesional. La base de datos debe ser PostgreSQL porque la restricción de solapamiento utiliza `btree_gist` y rangos `tstzrange`.
 
@@ -58,6 +60,7 @@ Para ejecutar el sistema completo, mantener dos terminales abiertas:
 * API REST y pruebas automatizadas: implementadas.
 * Interfaz Next.js: implementada para agenda, creación de citas, historial y administración CRUD.
 * CRUD de propietarios, mascotas y profesionales: implementado en la API y en la pantalla `/gestion`.
+* CRUD de tipos de consulta: implementado en la API y en la pantalla `/gestion`. El tipo `Otro` exige una descripción del motivo.
 
 ## Decisiones arquitectónicas
 
