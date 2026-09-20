@@ -80,3 +80,33 @@ class VeterinaryApiTests(TestCase):
 
         response = self.client.delete(f"/api/owners/{owner_id}/")
         self.assertEqual(response.status_code, 204)
+
+    def test_visit_endpoint_registers_attention_and_marks_appointment_attended(self):
+        appointment = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": self.starts_at.isoformat(),
+            },
+            format="json",
+        )
+        appointment_id = appointment.data["id"]
+
+        response = self.client.post(
+            "/api/visits/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "appointment": appointment_id,
+                "reason": "Control general",
+                "diagnosis": "Paciente saludable",
+                "treatment": "Continuar cuidados preventivos",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        appointment_response = self.client.get(f"/api/agenda/?date=2026-09-21&professional_id={self.professional.id}")
+        self.assertEqual(appointment_response.data["schedules"][0]["appointments"][0]["status"], "ATTENDED")

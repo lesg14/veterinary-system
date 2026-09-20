@@ -6,13 +6,14 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from veterinary.models import Appointment, Owner, Pet, Professional
+from veterinary.models import Appointment, Owner, Pet, Professional, Visit
 from veterinary.serializers import (
     AppointmentSerializer,
     OwnerSerializer,
     PetHistorySerializer,
     PetSerializer,
     ProfessionalSerializer,
+    VisitSerializer,
 )
 from veterinary.services.appointments import cancel_appointment, get_daily_schedule
 
@@ -45,6 +46,23 @@ class ProfessionalListCreateView(generics.ListCreateAPIView):
 class ProfessionalDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Professional.objects.all()
     serializer_class = ProfessionalSerializer
+
+
+class VisitListCreateView(generics.ListCreateAPIView):
+    queryset = Visit.objects.select_related("pet", "professional", "appointment").all()
+    serializer_class = VisitSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        pet_id = self.request.query_params.get("pet_id")
+        if pet_id:
+            queryset = queryset.filter(pet_id=pet_id)
+        return queryset
+
+
+class VisitDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Visit.objects.select_related("pet", "professional", "appointment").all()
+    serializer_class = VisitSerializer
 
 
 class AppointmentCreateView(APIView):

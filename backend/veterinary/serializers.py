@@ -69,6 +69,7 @@ class VisitSerializer(serializers.ModelSerializer):
         model = Visit
         fields = [
             "id",
+            "pet",
             "appointment",
             "professional",
             "attended_at",
@@ -79,7 +80,15 @@ class VisitSerializer(serializers.ModelSerializer):
             "recommendations",
             "notes",
         ]
-        read_only_fields = fields
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        visit = Visit(**validated_data)
+        visit.save()
+        if visit.appointment_id and visit.appointment.status == Appointment.Status.SCHEDULED:
+            visit.appointment.status = Appointment.Status.ATTENDED
+            visit.appointment.save(update_fields=["status", "updated_at"])
+        return visit
 
 
 class PetHistorySerializer(serializers.ModelSerializer):

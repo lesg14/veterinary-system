@@ -11,6 +11,8 @@ from veterinary.views import (
     PetListCreateView,
     ProfessionalDetailView,
     ProfessionalListCreateView,
+    VisitDetailView,
+    VisitListCreateView,
 )
 
 
@@ -21,6 +23,8 @@ urlpatterns = [
     path("pets/<int:pk>/", PetDetailView.as_view(), name="pet-detail"),
     path("professionals/", ProfessionalListCreateView.as_view(), name="professional-list-create"),
     path("professionals/<int:pk>/", ProfessionalDetailView.as_view(), name="professional-detail"),
+    path("visits/", VisitListCreateView.as_view(), name="visit-list-create"),
+    path("visits/<int:pk>/", VisitDetailView.as_view(), name="visit-detail"),
     path("appointments/", AppointmentCreateView.as_view(), name="appointment-create"),
     path(
         "appointments/<int:appointment_id>/cancel/",
