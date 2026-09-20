@@ -167,3 +167,31 @@ class AppointmentServiceTests(TestCase):
         )
 
         self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 20)
+
+    def test_sixty_minute_consultation_uses_two_half_hour_blocks(self):
+        consultation = ConsultationType.objects.create(
+            name="Procedimiento",
+            duration_minutes=60,
+        )
+
+        create_appointment(
+            pet=self.pet,
+            professional=self.professional,
+            consultation_type=consultation,
+            starts_at=self.appointment_time(9),
+        )
+
+        schedule = get_daily_schedule(
+            day=datetime(2026, 9, 21).date(),
+            professional=self.professional,
+        )
+
+        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 18)
+        self.assertEqual(
+            schedule["schedules"][0]["free_slots"][0]["starts_at"].time(),
+            time(8, 0),
+        )
+        self.assertEqual(
+            schedule["schedules"][0]["free_slots"][-1]["ends_at"].time(),
+            time(18, 0),
+        )
