@@ -56,3 +56,27 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(len(response.data["schedules"]), 1)
         first_free_slot = response.data["schedules"][0]["free_slots"][0]
         self.assertEqual(first_free_slot["starts_at"].time(), time(8, 0))
+
+    def test_owner_crud_endpoints_create_list_update_and_delete(self):
+        response = self.client.post(
+            "/api/owners/",
+            {"full_name": "Carlos Ruiz", "phone": "3110000000"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        owner_id = response.data["id"]
+
+        response = self.client.put(
+            f"/api/owners/{owner_id}/",
+            {"full_name": "Carlos Ruiz Actualizado", "phone": "3110000000"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["full_name"], "Carlos Ruiz Actualizado")
+
+        response = self.client.get("/api/owners/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(owner_id, [owner["id"] for owner in response.data])
+
+        response = self.client.delete(f"/api/owners/{owner_id}/")
+        self.assertEqual(response.status_code, 204)

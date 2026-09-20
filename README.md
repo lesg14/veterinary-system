@@ -28,22 +28,35 @@ Endpoints disponibles:
 * `GET /api/agenda/?date=YYYY-MM-DD`: consultar la agenda diaria y espacios libres.
 * `GET /api/agenda/?date=YYYY-MM-DD&professional_id={id}`: filtrar la agenda por profesional.
 * `GET /api/pets/{id}/history/`: consultar el historial de una mascota.
+* `GET|POST /api/owners/`: listar y crear propietarios.
+* `GET|PUT|DELETE /api/owners/{id}/`: consultar, actualizar y eliminar un propietario.
+* `GET|POST /api/pets/`: listar y crear mascotas.
+* `GET|PUT|DELETE /api/pets/{id}/`: consultar, actualizar y eliminar una mascota.
+* `GET|POST /api/professionals/`: listar y crear profesionales.
+* `GET|PUT|DELETE /api/professionals/{id}/`: consultar, actualizar y eliminar un profesional.
 
 La agenda usa el horario asumido de 08:00 a 18:00 y devuelve los espacios libres por profesional. La base de datos debe ser PostgreSQL porque la restricción de solapamiento utiliza `btree_gist` y rangos `tstzrange`.
 
 ### 2. Frontend (siguiente etapa)
-1. Navegar a la carpeta `frontend`.
+1. Abrir otra terminal y navegar a la carpeta `frontend`.
 2. Instalar dependencias: `npm install`
-3. Iniciar el servidor de desarrollo: `npm run dev`
+3. Copiar `frontend/.env.example` como `frontend/.env.local` si se necesita cambiar la URL del backend.
+4. Iniciar el servidor de desarrollo: `npm run dev`
+5. Abrir `http://localhost:3000`.
 
-La carpeta `frontend` todavía no ha sido creada. La primera vista será la agenda diaria, conectada al endpoint `GET /api/agenda/`.
+El frontend incluye la agenda diaria, filtros por fecha y profesional, espacios libres, resumen de citas, formulario de nueva cita y la pantalla `/gestion` para administrar propietarios, mascotas y profesionales. Utiliza un rewrite de Next.js para reenviar `/api/*` a Django y evitar CORS durante el desarrollo.
+
+Para ejecutar el sistema completo, mantener dos terminales abiertas:
+
+* Terminal 1: `cd backend` y `py -3.12 manage.py runserver 8000`.
+* Terminal 2: `cd frontend` y `npm run dev`.
 
 ## Estado actual
 
 * Modelos y migraciones Django: implementados.
 * Servicios de citas y agenda diaria: implementados.
 * API REST y pruebas automatizadas: implementadas.
-* Interfaz Next.js: pendiente.
+* Interfaz Next.js: implementada para agenda y creación de citas.
 
 ## Decisiones arquitectónicas
 

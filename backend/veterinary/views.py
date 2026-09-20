@@ -2,13 +2,49 @@ from datetime import date
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework import serializers, status
+from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from veterinary.models import Appointment, Pet, Professional
-from veterinary.serializers import AppointmentSerializer, PetHistorySerializer
+from veterinary.models import Appointment, Owner, Pet, Professional
+from veterinary.serializers import (
+    AppointmentSerializer,
+    OwnerSerializer,
+    PetHistorySerializer,
+    PetSerializer,
+    ProfessionalSerializer,
+)
 from veterinary.services.appointments import cancel_appointment, get_daily_schedule
+
+
+class OwnerListCreateView(generics.ListCreateAPIView):
+    queryset = Owner.objects.all()
+    serializer_class = OwnerSerializer
+
+
+class OwnerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Owner.objects.all()
+    serializer_class = OwnerSerializer
+
+
+class PetListCreateView(generics.ListCreateAPIView):
+    queryset = Pet.objects.select_related("owner").all()
+    serializer_class = PetSerializer
+
+
+class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Pet.objects.select_related("owner").all()
+    serializer_class = PetSerializer
+
+
+class ProfessionalListCreateView(generics.ListCreateAPIView):
+    queryset = Professional.objects.all()
+    serializer_class = ProfessionalSerializer
+
+
+class ProfessionalDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Professional.objects.all()
+    serializer_class = ProfessionalSerializer
 
 
 class AppointmentCreateView(APIView):
