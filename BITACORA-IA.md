@@ -27,4 +27,15 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 ## Sesión 5: 2026-09-19
 *   **Qué pedí:** Actualizar la documentación antes de construir el frontend.
 *   **Qué decidió el agente:** Actualizar README, supuestos y bitácora, y crear el ADR 003 para registrar la validación en capas de las reglas de agenda.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. La documentación fue actualizada y el ADR 003 quedó incorporado al repositorio.
+
+## Sesión 6: 2026-09-19
+*   **Qué pedí:** Crear el frontend completo y el CRUD de propietarios, mascotas y profesionales.
+*   **Qué propuso el agente:** Implementar una interfaz Next.js con agenda diaria, historial y pantalla `/gestion`, además de endpoints REST CRUD en Django.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se decidió mantener las validaciones en el backend y usar el frontend como cliente de la API, evitando duplicar reglas de integridad en React.
+*   **Qué quedó verificado:** Build de Next.js exitoso, `manage.py check`, 10 pruebas automatizadas exitosas y prueba funcional de creación y eliminación de un propietario desde la interfaz.
+
+## Sesión 7: 2026-09-19
+*   **Qué pedí:** Actualizar los archivos Markdown y registrar la decisión tomada.
+*   **Qué decidió el agente:** Actualizar el estado real del README, cerrar la bitácora y crear el ADR 004 sobre el CRUD administrativo.
 *   **Decisión (Aceptado/Rechazado):** Pendiente de revisión del usuario.

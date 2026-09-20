@@ -1,11 +1,11 @@
 # Sistema de Agendamiento - Clínica Veterinaria
 
-Este repositorio contiene la prueba técnica para el sistema de agendamiento de una clínica veterinaria. El backend ya resuelve el problema de cruce de citas y pérdida de historiales mediante reglas de negocio estrictas y una API REST. La interfaz Next.js queda como siguiente etapa de construcción.
+Este repositorio contiene la prueba técnica para el sistema de agendamiento de una clínica veterinaria. El backend resuelve el problema de cruce de citas y pérdida de historiales mediante reglas de negocio estrictas y una API REST. El frontend Next.js permite operar la agenda y administrar los catálogos principales de la clínica.
 
 ## Arquitectura
 El proyecto está dividido en dos partes principales para separar la lógica de negocio de la interfaz de usuario:
 *   **Backend:** Django con PostgreSQL (API REST).
-*   **Frontend:** Next.js con Tailwind CSS (pendiente de implementación).
+*   **Frontend:** Next.js con CSS Modules y `lucide-react`.
 
 ## Requisitos Previos
 *   Python 3.10+
@@ -37,7 +37,7 @@ Endpoints disponibles:
 
 La agenda usa el horario asumido de 08:00 a 18:00 y devuelve los espacios libres por profesional. La base de datos debe ser PostgreSQL porque la restricción de solapamiento utiliza `btree_gist` y rangos `tstzrange`.
 
-### 2. Frontend (siguiente etapa)
+### 2. Levantar el Frontend (Next.js)
 1. Abrir otra terminal y navegar a la carpeta `frontend`.
 2. Instalar dependencias: `npm install`
 3. Copiar `frontend/.env.example` como `frontend/.env.local` si se necesita cambiar la URL del backend.
@@ -56,8 +56,9 @@ Para ejecutar el sistema completo, mantener dos terminales abiertas:
 * Modelos y migraciones Django: implementados.
 * Servicios de citas y agenda diaria: implementados.
 * API REST y pruebas automatizadas: implementadas.
-* Interfaz Next.js: implementada para agenda y creación de citas.
+* Interfaz Next.js: implementada para agenda, creación de citas, historial y administración CRUD.
+* CRUD de propietarios, mascotas y profesionales: implementado en la API y en la pantalla `/gestion`.
 
 ## Decisiones arquitectónicas
 
-Las decisiones principales se encuentran en [docs/adr](docs/adr/). El ADR 003 documenta la validación en capas de las reglas de agenda.
+Las decisiones principales se encuentran en [docs/adr](docs/adr/). El ADR 003 documenta la validación en capas de las reglas de agenda y el ADR 004 documenta la decisión de implementar el CRUD mediante API REST y una pantalla administrativa dedicada.

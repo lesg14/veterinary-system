@@ -33,4 +33,4 @@ Se establece una arquitectura cliente-servidor desacoplada utilizando **Django c
 
 ## Estado de implementación
 
-La parte backend de esta decisión ya está implementada con Django, PostgreSQL y Django REST Framework. Incluye modelos, migraciones, servicios de citas, agenda diaria, historial y pruebas automatizadas. La aplicación Next.js continúa pendiente y será construida como cliente de la API REST.
+Esta decisión está implementada con Django, PostgreSQL, Django REST Framework y Next.js. El backend incluye modelos, migraciones, servicios de citas, agenda diaria, historial, endpoints CRUD y pruebas automatizadas. El frontend consume la API como cliente y contiene la agenda, el historial y la administración de propietarios, mascotas y profesionales.
