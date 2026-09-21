@@ -44,6 +44,7 @@ type Pet = {
 type Professional = {
   id: number;
   full_name: string;
+  identification_type: "CC" | "CE" | "PASSPORT" | "NIT";
   professional_id: string;
   specialty: string;
   phone: string;
@@ -93,6 +94,7 @@ const emptyForms = {
   },
   professionals: {
     full_name: "",
+    identification_type: "CC",
     professional_id: "",
     specialty: "",
     phone: "",
@@ -818,13 +820,26 @@ function EditorModal({
               <Field
                 label="Nombre completo"
                 value={form.full_name as string}
-                onChange={(value) => update("full_name", value)}
+                onChange={(value) => update("full_name", capitalizeWords(value))}
                 required
               />
+              <label>
+                Tipo de identificación
+                <select required value={form.identification_type as string} onChange={(event) => update("identification_type", event.target.value)}>
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="PASSPORT">Pasaporte</option>
+                  <option value="NIT">NIT</option>
+                </select>
+              </label>
               <Field
-                label="Identificación profesional"
+                label="Número de identificación"
                 value={form.professional_id as string}
-                onChange={(value) => update("professional_id", value)}
+                onChange={(value) => update("professional_id", value.replace(/\D/g, "").slice(0, 10))}
+                inputMode="numeric"
+                pattern="[0-9]{7,10}"
+                minLength={7}
+                maxLength={10}
                 required
               />
               <Field
@@ -836,13 +851,20 @@ function EditorModal({
                 <Field
                   label="Teléfono"
                   value={form.phone as string}
-                  onChange={(value) => update("phone", value)}
+                  onChange={(value) => update("phone", value.replace(/\D/g, "").slice(0, 10))}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  minLength={10}
+                  maxLength={10}
+                  required
                 />
                 <Field
                   label="Correo"
                   type="email"
                   value={form.email as string}
                   onChange={(value) => update("email", value)}
+                  required
                 />
               </div>
             </>
@@ -886,6 +908,7 @@ function CatalogEditor({
   const [isActive, setIsActive] = useState(current?.is_active ?? true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const capitalizeWords = (value: string) => value.replace(/\s+/g, " ").replace(/(^|[\s'-])\p{L}/gu, (letter) => letter.toUpperCase());
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -913,7 +936,7 @@ function CatalogEditor({
     onSaved();
   }
 
-  return <div className={styles.backdrop} role="presentation"><section className={styles.modal} role="dialog" aria-modal="true"><header><div><span className={styles.eyebrow}>{item ? "EDITAR" : "NUEVO REGISTRO"}</span><h2>{item ? `Editar ${singular(section)}` : `Nueva ${singular(section)}`}</h2></div><button onClick={onClose} aria-label="Cerrar"><X size={18} /></button></header><form onSubmit={submit}><Field label={editingSpecies ? "Nombre de la especie" : "Nombre de la raza"} value={name} onChange={setName} required />{!editingSpecies && <label>Especie<select required value={speciesId} onChange={(event) => setSpeciesId(event.target.value)}><option value="">Seleccionar especie</option>{species.map((record) => <option key={record.id} value={record.id}>{record.name}</option>)}</select></label>}<label>Estado<select value={isActive ? "true" : "false"} onChange={(event) => setIsActive(event.target.value === "true")}><option value="true">Activo</option><option value="false">Inactivo</option></select></label>{error && <p className={styles.formError}>{error}</p>}<footer><button type="button" className={styles.secondaryButton} onClick={onClose}>Cancelar</button><button className={styles.primaryButton} disabled={saving}>{saving ? "Guardando..." : "Guardar registro"}</button></footer></form></section></div>;
+  return <div className={styles.backdrop} role="presentation"><section className={styles.modal} role="dialog" aria-modal="true"><header><div><span className={styles.eyebrow}>{item ? "EDITAR" : "NUEVO REGISTRO"}</span><h2>{item ? `Editar ${singular(section)}` : `Nueva ${singular(section)}`}</h2></div><button onClick={onClose} aria-label="Cerrar"><X size={18} /></button></header><form onSubmit={submit}><Field label={editingSpecies ? "Nombre de la especie" : "Nombre de la raza"} value={name} onChange={(value) => setName(capitalizeWords(value))} required />{!editingSpecies && <label>Especie<select required value={speciesId} onChange={(event) => setSpeciesId(event.target.value)}><option value="">Seleccionar especie</option>{species.map((record) => <option key={record.id} value={record.id}>{record.name}</option>)}</select></label>}<label>Estado<select value={isActive ? "true" : "false"} onChange={(event) => setIsActive(event.target.value === "true")}><option value="true">Activo</option><option value="false">Inactivo</option></select></label>{error && <p className={styles.formError}>{error}</p>}<footer><button type="button" className={styles.secondaryButton} onClick={onClose}>Cancelar</button><button className={styles.primaryButton} disabled={saving}>{saving ? "Guardando..." : "Guardar registro"}</button></footer></form></section></div>;
 }
 
 function ConsultationTypeModal({
@@ -934,6 +957,7 @@ function ConsultationTypeModal({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const isOther = form.name.trim().toLowerCase() === "otro";
+  const capitalizeWords = (value: string) => value.replace(/\s+/g, " ").replace(/(^|[\s'-])\p{L}/gu, (letter) => letter.toUpperCase());
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -989,7 +1013,7 @@ function ConsultationTypeModal({
           <Field
             label="Nombre"
             value={form.name}
-            onChange={(value) => setForm({ ...form, name: value })}
+            onChange={(value) => setForm({ ...form, name: capitalizeWords(value) })}
             required
           />
           <div className={styles.grid}>
@@ -997,8 +1021,12 @@ function ConsultationTypeModal({
               label="Duración (minutos)"
               type="number"
               value={form.duration_minutes}
+              inputMode="numeric"
+              min={1}
+              step={1}
+              pattern="[0-9]+"
               onChange={(value) =>
-                setForm({ ...form, duration_minutes: value })
+                setForm({ ...form, duration_minutes: value.replace(/\D/g, "") })
               }
               required
             />
@@ -1072,6 +1100,8 @@ function Field({
   pattern,
   minLength,
   maxLength,
+  min,
+  step,
 }: {
   label: string;
   value: string;
@@ -1082,6 +1112,8 @@ function Field({
   pattern?: string;
   minLength?: number;
   maxLength?: number;
+  min?: number;
+  step?: number;
 }) {
   return (
     <label>
@@ -1093,6 +1125,8 @@ function Field({
         pattern={pattern}
         minLength={minLength}
         maxLength={maxLength}
+        min={min}
+        step={step}
         value={value || ""}
         onChange={(event) => onChange(event.target.value)}
       />
