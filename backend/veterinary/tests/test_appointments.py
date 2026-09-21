@@ -18,7 +18,9 @@ class AppointmentServiceTests(TestCase):
     def setUpTestData(cls):
         cls.owner = Owner.objects.create(
             full_name="Ana Torres",
+            identification="1234567",
             phone="3000000000",
+            email="ana@example.com",
         )
         cls.canine, _ = Species.objects.get_or_create(name="Canina")
         cls.mixed_breed, _ = Breed.objects.get_or_create(

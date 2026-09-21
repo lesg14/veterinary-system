@@ -44,8 +44,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class OwnerSerializer(serializers.ModelSerializer):
-    identification = serializers.RegexField(regex=r"^\d{7,10}$", allow_null=True, allow_blank=True)
+    identification = serializers.RegexField(regex=r"^\d{7,10}$", required=True)
     phone = serializers.RegexField(regex=r"^\d{10}$")
+    email = serializers.EmailField(required=True, allow_blank=False)
 
     class Meta:
         model = Owner

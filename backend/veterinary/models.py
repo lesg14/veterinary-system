@@ -80,6 +80,13 @@ class Owner(models.Model):
     def __str__(self):
         return self.full_name
 
+    def clean(self):
+        super().clean()
+        if not self.identification:
+            raise ValidationError({"identification": "El propietario debe registrar una identificación."})
+        if not self.email:
+            raise ValidationError({"email": "El propietario debe registrar un correo electrónico."})
+
     def save(self, *args, **kwargs):
         self.full_name = " ".join(word.capitalize() for word in self.full_name.split())
         self.full_clean()
@@ -127,6 +134,10 @@ class Breed(models.Model):
 
 
 class Pet(models.Model):
+    class Sex(models.TextChoices):
+        MALE = "Macho", _("Macho")
+        FEMALE = "Hembra", _("Hembra")
+
     class VitalStatus(models.TextChoices):
         ALIVE = "ALIVE", _("Viva")
         DECEASED = "DECEASED", _("Fallecida")
@@ -135,7 +146,7 @@ class Pet(models.Model):
     name = models.CharField(max_length=100)
     species = models.ForeignKey(Species, on_delete=models.PROTECT, related_name="pets")
     breed = models.ForeignKey(Breed, on_delete=models.PROTECT, related_name="pets")
-    sex = models.CharField(max_length=20, blank=True)
+    sex = models.CharField(max_length=20, choices=Sex.choices, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     vital_status = models.CharField(
         max_length=10,
