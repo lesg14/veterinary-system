@@ -300,7 +300,7 @@ export default function ManagementPage() {
             />
           </div>
           {section === "breeds" && (
-            <select value={speciesFilter} onChange={(event) => setSpeciesFilter(event.target.value)}>
+            <select className={styles.filterSelect} value={speciesFilter} onChange={(event) => setSpeciesFilter(event.target.value)}>
               <option value="all">Todas las especies</option>
               {species.map((record) => <option key={record.id} value={record.id}>{record.name}</option>)}
             </select>
@@ -469,6 +469,7 @@ function RecordsTable({
                     <small>ID #{item.id}</small>
                   </td>
                   <td>
+                    <small>{(item as Owner).identification_type} · {(item as Owner).identification || "Sin identificación"}</small>
                     {(item as Owner).phone}
                     <small>{(item as Owner).email || "Sin correo"}</small>
                   </td>
@@ -515,7 +516,7 @@ function RecordsTable({
                     </small>
                   </td>
                   <td>{(item as Professional).specialty || "General"}</td>
-                  <td>{(item as Professional).professional_id}</td>
+                  <td>{(item as Professional).identification_type} · {(item as Professional).professional_id}<small>{(item as Professional).phone || "Sin teléfono"}</small></td>
                   <td>
                     <Status active={(item as Professional).is_active} />
                   </td>

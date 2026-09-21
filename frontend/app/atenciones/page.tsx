@@ -205,6 +205,11 @@ function VisitModal({
   const update = (key: string, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
 
+  useEffect(() => {
+    const appointmentId = new URLSearchParams(window.location.search).get("appointment_id");
+    if (appointmentId) update("appointment", appointmentId);
+  }, []);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);

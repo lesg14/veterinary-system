@@ -44,6 +44,7 @@ type AgendaResponse = {
   date: string;
   opening: string;
   closing: string;
+  work_intervals: { starts_at: string; ends_at: string }[];
   schedules: Schedule[];
 };
 
@@ -117,6 +118,8 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [attendanceAppointment, setAttendanceAppointment] =
+    useState<Appointment | null>(null);
 
   async function loadAgenda() {
     setLoading(true);
@@ -189,8 +192,8 @@ export default function Home() {
           <a className={styles.navItem} href="/gestion">
             <PawPrint size={18} /> Pacientes
           </a>
-          <a className={styles.navItem} href="/atenciones">
-            <FileText size={18} /> Atenciones
+          <a className={styles.navItem} href="/historial">
+            <CalendarDays size={18} /> Historial
           </a>
         </nav>
         <div className={styles.navBottom}>
@@ -291,7 +294,11 @@ export default function Home() {
         <div className={styles.dateTitle}>
           <div>
             <h2>{formatDate(selectedDate)}</h2>
-            <span>Horario de atención · 08:00 - 18:00</span>
+            <span>
+              {agenda?.work_intervals.length
+                ? `Horario de atención · ${agenda.work_intervals.map((interval) => `${formatTime(interval.starts_at)} - ${formatTime(interval.ends_at)}`).join(" · ")}`
+                : "Sin jornada laboral"}
+            </span>
           </div>
           <div className={styles.liveStatus}>
             <span /> Agenda actualizada
@@ -316,7 +323,7 @@ export default function Home() {
               <span>Espacios libres</span>
               <strong>{freeSlotsCount}</strong>
             </div>
-            <small>bloques disponibles</small>
+            <small>intervalos disponibles</small>
           </div>
           <div className={styles.statCard}>
             <div className={`${styles.statIcon} ${styles.lilac}`}>
@@ -341,14 +348,13 @@ export default function Home() {
             <div>
               <strong>No se pudo conectar con la agenda</strong>
               <p>
-                {error} Verifica que Django esté ejecutándose en el puerto
-                8000.
+                {error} Verifica que Django esté ejecutándose en el puerto 8000.
               </p>
             </div>
             <button onClick={loadAgenda}>Reintentar</button>
           </div>
         ) : (
-          <CalendarBoard
+          <ScheduleBoard
             agenda={agenda}
             onAppointmentClick={setSelectedAppointment}
           />
@@ -371,6 +377,20 @@ export default function Home() {
           onSaved={() => {
             setSelectedAppointment(null);
             loadAgenda();
+          }}
+          onRegisterAttendance={() => {
+            setAttendanceAppointment(selectedAppointment);
+            setSelectedAppointment(null);
+          }}
+        />
+      )}
+      {attendanceAppointment && (
+        <AttendanceModal
+          appointment={attendanceAppointment}
+          onClose={() => setAttendanceAppointment(null)}
+          onSaved={() => {
+            loadAgenda();
+            setAttendanceAppointment(null);
           }}
         />
       )}
@@ -467,6 +487,27 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
                 </span>
               </div>
             </div>
+            <h3>Citas registradas ({history.appointments.length})</h3>
+            {history.appointments.length === 0 ? (
+              <p className={styles.mutedText}>Aún no hay citas registradas.</p>
+            ) : (
+              history.appointments.map((appointment) => (
+                <div
+                  className={styles.visitItem}
+                  key={`appointment-${appointment.id}`}
+                >
+                  <strong>
+                    {formatTime(appointment.starts_at)} -{" "}
+                    {formatTime(appointment.ends_at)}
+                  </strong>
+                  <span>
+                    {appointment.consultation_type_name} ·{" "}
+                    {statusLabels[appointment.status]}
+                  </span>
+                  <small>{appointment.professional_name}</small>
+                </div>
+              ))
+            )}
             <h3>Atenciones registradas ({history.visits.length})</h3>
             {history.visits.length === 0 ? (
               <p className={styles.mutedText}>
@@ -520,7 +561,7 @@ function ProfessionalSchedule({
             {schedule.appointments.length}{" "}
             {schedule.appointments.length === 1 ? "cita" : "citas"}
           </strong>
-          <span>{schedule.free_slots.length} espacios libres</span>
+          <span>{schedule.free_slots.length} intervalos libres</span>
         </div>
       </div>
       <div className={styles.timeline}>
@@ -540,8 +581,7 @@ function ProfessionalSchedule({
                       : "Consulta veterinaria"}
                   </strong>
                   <span>
-                    {statusLabels[appointment.status]} · Mascota #
-                    {appointment.pet}
+                    {statusLabels[appointment.status]} · {appointment.pet_name}
                   </span>
                 </div>
                 <span className={styles.appointmentTime}>
@@ -561,7 +601,7 @@ function ProfessionalSchedule({
           <Clock3 size={14} />
           <span>Disponible</span>
           <time>
-              {formatTime(slot.starts_at)} - {formatTime(slot.ends_at)}
+            {formatTime(slot.starts_at)} - {formatTime(slot.ends_at)}
           </time>
           <button aria-label="Agendar en este espacio">
             Agendar <Plus size={13} />
@@ -579,26 +619,23 @@ function CalendarBoard({
   agenda: AgendaResponse | null;
   onAppointmentClick: (appointment: Appointment) => void;
 }) {
-  const slots = Array.from({ length: 21 }, (_, index) => {
-    const totalMinutes = 8 * 60 + index * 30;
-    return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
-  });
-
-  function getBlockSpan(start: Date, end: Date) {
-    const minutes = (end.getTime() - start.getTime()) / 60000;
-    return Math.max(1, Math.ceil(minutes / 30));
-  }
+  const dayStart = 8 * 60;
+  const dayEnd = 18 * 60;
+  const pixelsPerMinute = 1.25;
+  const hourLabels = Array.from({ length: 11 }, (_, index) => 8 + index);
+  const workingIntervals =
+    agenda?.work_intervals.map((interval) => ({
+      start:
+        new Date(interval.starts_at).getHours() * 60 +
+        new Date(interval.starts_at).getMinutes(),
+      end:
+        new Date(interval.ends_at).getHours() * 60 +
+        new Date(interval.ends_at).getMinutes(),
+    })) ?? [];
 
   return (
     <section
       className={styles.calendarBoard}
-      style={
-        {
-          "--professional-count": String(
-            Math.max(agenda?.schedules.length || 1, 1),
-          ),
-        } as React.CSSProperties
-      }
       aria-label="Calendario diario por profesional"
     >
       <div className={styles.calendarHeader}>
@@ -611,49 +648,59 @@ function CalendarBoard({
             <strong>{schedule.professional}</strong>
             <span>
               {schedule.appointments.length} citas ·{" "}
-              {schedule.free_slots.length} libres
+              {schedule.free_slots.length} intervalos libres
             </span>
           </div>
         ))}
       </div>
-      <div className={styles.calendarBody}>
-        <div className={styles.timeColumn}>
-          {slots.slice(0, -1).map((slot) => (
-            <div className={styles.timeCell} key={slot}>
-              {slot}
+      <div className={styles.continuousCalendarBody}>
+        <div className={styles.continuousTimeColumn}>
+          {hourLabels.map((hour) => (
+            <div
+              key={hour}
+              style={{ top: `${(hour * 60 - dayStart) * pixelsPerMinute}px` }}
+            >
+              {String(hour).padStart(2, "0")}:00
             </div>
           ))}
         </div>
         {agenda?.schedules.map((schedule, index) => (
           <div
-            className={styles.professionalColumn}
+            className={styles.continuousProfessionalColumn}
             key={schedule.professional_id}
           >
-            <div className={styles.slotGrid}>
-              {slots.slice(0, -1).map((slot) => (
-                <div className={styles.openCell} key={slot}>
-                  <span>Libre</span>
-                </div>
-              ))}
+            <div
+              className={styles.continuousTimeline}
+              style={{ height: `${(dayEnd - dayStart) * pixelsPerMinute}px` }}
+            >
+              {workingIntervals.length > 0 && (
+                <>
+                  {workingIntervals.map((interval) => (
+                    <div
+                      className={styles.workingBand}
+                      key={`${interval.start}-${interval.end}`}
+                      style={{
+                        top: `${(interval.start - dayStart) * pixelsPerMinute}px`,
+                        height: `${(interval.end - interval.start) * pixelsPerMinute}px`,
+                      }}
+                    />
+                  ))}
+                </>
+              )}
               {schedule.appointments.map((appointment) => {
                 const start = new Date(appointment.starts_at);
                 const end = new Date(appointment.ends_at);
                 const startMinutes = start.getHours() * 60 + start.getMinutes();
-                const rowStart = Math.max(
-                  1,
-                  Math.floor((startMinutes - 8 * 60) / 30) + 1,
-                );
-                const rowSpan = Math.max(
-                  1,
-                  Math.ceil(
-                    (end.getTime() - start.getTime()) / (30 * 60 * 1000),
-                  ),
-                );
+                const durationMinutes =
+                  (end.getTime() - start.getTime()) / 60000;
                 return (
                   <button
-                    className={`${styles.calendarAppointment} ${styles[colors[index % colors.length]]} ${appointment.status === "ATTENDED" ? styles.attended : ""}`}
+                    className={`${styles.continuousAppointment} ${styles[colors[index % colors.length]]} ${appointment.status === "ATTENDED" ? styles.attended : ""}`}
                     key={appointment.id}
-                    style={{ gridRow: `${rowStart} / span ${rowSpan}` }}
+                    style={{
+                      top: `${(startMinutes - dayStart) * pixelsPerMinute}px`,
+                      height: `${Math.max(durationMinutes * pixelsPerMinute, 34)}px`,
+                    }}
                     onClick={() => onAppointmentClick(appointment)}
                   >
                     <strong>
@@ -675,7 +722,7 @@ function CalendarBoard({
       </div>
       <div className={styles.calendarLegend}>
         <span>
-          <i className={styles.legendFree} /> Espacio libre
+          <i className={styles.legendFree} /> Horario laboral
         </span>
         <span>
           <i className={styles.legendBooked} /> Cita ocupada
@@ -685,6 +732,204 @@ function CalendarBoard({
         </span>
       </div>
     </section>
+  );
+}
+
+function ScheduleBoard({
+  agenda,
+  onAppointmentClick,
+}: {
+  agenda: AgendaResponse | null;
+  onAppointmentClick: (appointment: Appointment) => void;
+}) {
+  return (
+    <section
+      className={styles.scheduleBoard}
+      aria-label="Agenda diaria por profesional"
+    >
+      {agenda?.schedules.map((schedule, index) => (
+        <article
+          className={styles.scheduleColumn}
+          key={schedule.professional_id}
+        >
+          <header
+            className={`${styles.scheduleColumnHeader} ${styles[colors[index % colors.length]]}`}
+          >
+            <div className={styles.professionalAvatar}>
+              {schedule.professional
+                .split(" ")
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)}
+            </div>
+            <div>
+              <strong>{schedule.professional}</strong>
+              <span>
+                {schedule.appointments.length}{" "}
+                {schedule.appointments.length === 1 ? "cita" : "citas"}
+              </span>
+            </div>
+            <small>{schedule.free_slots.length} intervalos libres</small>
+          </header>
+          <div className={styles.scheduleAppointments}>
+            {schedule.appointments.length ? (
+              schedule.appointments.map((appointment) => (
+                <button
+                  className={`${styles.scheduleAppointment} ${styles[colors[index % colors.length]]}`}
+                  key={appointment.id}
+                  onClick={() => onAppointmentClick(appointment)}
+                >
+                  <div className={styles.scheduleAppointmentTime}>
+                    <Clock3 size={14} />
+                    {formatTime(appointment.starts_at)} -{" "}
+                    {formatTime(appointment.ends_at)}
+                  </div>
+                  <strong>{appointment.consultation_type_name}</strong>
+                  <span>{appointment.pet_name}</span>
+                  <small>
+                    {appointment.consultation_duration_minutes} minutos ·{" "}
+                    {statusLabels[appointment.status]}
+                  </small>
+                </button>
+              ))
+            ) : (
+              <div className={styles.noAppointments}>Sin citas registradas</div>
+            )}
+          </div>
+          <div className={styles.scheduleAvailability}>
+            <strong>Horarios disponibles</strong>
+            {schedule.free_slots.length ? (
+              schedule.free_slots.map((slot) => (
+                <div className={styles.availableInterval} key={`${slot.starts_at}-${slot.ends_at}`}>
+                  <Clock3 size={14} />
+                  <span>{formatTime(slot.starts_at)} - {formatTime(slot.ends_at)}</span>
+                  <small>Libre para atender</small>
+                </div>
+              ))
+            ) : (
+              <span className={styles.noAvailability}>Sin intervalos disponibles</span>
+            )}
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function AttendanceModal({
+  appointment,
+  onClose,
+  onSaved,
+}: {
+  appointment: Appointment;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [treatment, setTreatment] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const response = await fetch("/api/visits/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pet: appointment.pet,
+        professional: appointment.professional,
+        appointment: appointment.id,
+        reason,
+        diagnosis,
+        treatment,
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      setError(
+        Object.values(body || {})
+          .flat()
+          .join(" ") || "No se pudo registrar la atención.",
+      );
+      setSaving(false);
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <div className={styles.modalBackdrop} role="presentation">
+      <section
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="attendance-title"
+      >
+        <div className={styles.modalHeader}>
+          <div>
+            <span className={styles.eyebrow}>HISTORIAL CLÍNICO</span>
+            <h2 id="attendance-title">Registrar atención</h2>
+          </div>
+          <button
+            className={styles.iconButton}
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className={styles.appointmentDetail}>
+          <div>
+            <span>Mascota</span>
+            <strong>{appointment.pet_name}</strong>
+          </div>
+          <div>
+            <span>Profesional</span>
+            <strong>{appointment.professional_name}</strong>
+          </div>
+          <div>
+            <span>Consulta</span>
+            <strong>{appointment.consultation_type_name}</strong>
+          </div>
+        </div>
+        <form onSubmit={submit} className={styles.form}>
+          <label>
+            Motivo de consulta
+            <textarea
+              required
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          <label>
+            Diagnóstico
+            <textarea
+              value={diagnosis}
+              onChange={(event) => setDiagnosis(event.target.value)}
+            />
+          </label>
+          <label>
+            Tratamiento
+            <textarea
+              value={treatment}
+              onChange={(event) => setTreatment(event.target.value)}
+            />
+          </label>
+          {error && (
+            <div className={styles.formError}>
+              <CircleAlert size={16} />
+              {error}
+            </div>
+          )}
+          <button className={styles.primaryButton} disabled={saving}>
+            {saving ? "Guardando..." : "Guardar atención"}
+          </button>
+        </form>
+      </section>
+    </div>
   );
 }
 
@@ -706,6 +951,8 @@ function AppointmentModal({
   const [consultationTypes, setConsultationTypes] = useState<
     ConsultationOption[]
   >([]);
+  const [availableStarts, setAvailableStarts] = useState<string[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -735,6 +982,34 @@ function AppointmentModal({
       );
   }, []);
 
+  useEffect(() => {
+    const selectedType = consultationTypes.find(
+      (item) => String(item.id) === form.consultation_type,
+    );
+    if (!form.professional || !form.starts_at || !selectedType) {
+      setAvailableStarts([]);
+      return;
+    }
+    const date = form.starts_at.slice(0, 10);
+    setAvailabilityLoading(true);
+    fetch(
+      `/api/appointments/availability/?date=${date}&professional_id=${form.professional}&pet_id=${form.pet}&duration_minutes=${selectedType.duration_minutes}`,
+    )
+      .then((response) => response.json())
+      .then((data) =>
+        setAvailableStarts(
+          (data.starts_at || []).map((value: string) => value.slice(11, 16)),
+        ),
+      )
+      .catch(() => setAvailableStarts([]))
+      .finally(() => setAvailabilityLoading(false));
+  }, [
+    form.professional,
+    form.consultation_type,
+    form.starts_at,
+    consultationTypes,
+  ]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -750,7 +1025,11 @@ function AppointmentModal({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.detail?.[0] ?? "No se pudo crear la cita.");
+        const message =
+          data?.starts_at?.[0] ||
+          data?.detail?.[0] ||
+          "No se pudo crear la cita.";
+        throw new Error(message);
       }
       onCreated();
     } catch (requestError) {
@@ -824,15 +1103,43 @@ function AppointmentModal({
             onChange={(value) => setForm({ ...form, consultation_type: value })}
           />
           <label>
-            Inicio
+            Fecha
             <input
               required
-              type="datetime-local"
-              value={form.starts_at}
+              type="date"
+              value={form.starts_at.slice(0, 10)}
               onChange={(event) =>
-                setForm({ ...form, starts_at: event.target.value })
+                setForm({
+                  ...form,
+                  starts_at: `${event.target.value}T${form.starts_at.slice(11, 16) || "08:00"}`,
+                })
               }
             />
+          </label>
+          <label>
+            Hora disponible
+            <select
+              required
+              disabled={!availableStarts.length || availabilityLoading}
+              value={form.starts_at.slice(11, 16)}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  starts_at: `${form.starts_at.slice(0, 10)}T${event.target.value}`,
+                })
+              }
+            >
+              <option value="">
+                {availabilityLoading
+                  ? "Calculando horarios..."
+                  : "Seleccionar hora"}
+              </option>
+              {availableStarts.map((start) => (
+                <option key={start} value={start}>
+                  {start}
+                </option>
+              ))}
+            </select>
           </label>
           {error && (
             <div className={styles.formError}>
@@ -861,14 +1168,17 @@ function AppointmentDetailModal({
   appointment,
   onClose,
   onSaved,
+  onRegisterAttendance,
 }: {
   appointment: Appointment;
   onClose: () => void;
   onSaved: () => void;
+  onRegisterAttendance: () => void;
 }) {
   const [startsAt, setStartsAt] = useState(appointment.starts_at.slice(0, 16));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   async function reschedule(event: React.FormEvent) {
     event.preventDefault();
@@ -893,6 +1203,32 @@ function AppointmentDetailModal({
           .join(" ") || "No se pudo reagendar la cita.",
       );
       setSaving(false);
+      return;
+    }
+    onSaved();
+  }
+
+  async function cancelAppointment() {
+    if (
+      !window.confirm(
+        "¿Deseas cancelar esta cita? Si faltan menos de dos horas, se registrará como inasistencia.",
+      )
+    )
+      return;
+    setCanceling(true);
+    setError("");
+    const response = await fetch(
+      `/api/appointments/${appointment.id}/cancel/`,
+      { method: "POST" },
+    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      setError(
+        Object.values(body || {})
+          .flat()
+          .join(" ") || "No se pudo cancelar la cita.",
+      );
+      setCanceling(false);
       return;
     }
     onSaved();
@@ -970,6 +1306,21 @@ function AppointmentDetailModal({
             )}
             <button className={styles.primaryButton} disabled={saving}>
               {saving ? "Guardando..." : "Reagendar cita"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={saving || canceling}
+              onClick={cancelAppointment}
+            >
+              {canceling ? "Cancelando..." : "Cancelar cita"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={onRegisterAttendance}
+            >
+              Registrar atención
             </button>
           </form>
         ) : (
