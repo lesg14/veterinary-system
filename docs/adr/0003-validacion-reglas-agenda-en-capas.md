@@ -8,7 +8,7 @@ Aceptado
 
 ## Contexto
 
-La regla más crítica del sistema es impedir que un profesional tenga dos citas que se solapen. Además, la duración de la consulta, el horario laboral, el estado de la mascota y las reglas de cancelación deben mantenerse aunque la operación provenga de una interfaz diferente al frontend.
+La regla más crítica del sistema es impedir citas incompatibles. La duración de la consulta, el horario laboral, el estado de la mascota, el solapamiento por profesional y el solapamiento de una misma mascota entre profesionales deben mantenerse aunque la operación provenga de una interfaz diferente al frontend.
 
 Una validación únicamente en Next.js no es suficiente: puede omitirse mediante otra herramienta, una solicitud directa a la API o dos solicitudes concurrentes. Por otra parte, una validación únicamente en la base de datos no proporciona mensajes de negocio claros ni permite centralizar todas las reglas del caso de uso.
 
@@ -16,9 +16,11 @@ Una validación únicamente en Next.js no es suficiente: puede omitirse mediante
 
 Se valida la lógica de agenda en tres capas complementarias:
 
-1. **Servicios Django:** `create_appointment`, `cancel_appointment` y `get_daily_schedule` concentran los casos de uso y calculan la duración, los espacios libres y los estados de cancelación.
+1. **Servicios Django:** `create_appointment`, `cancel_appointment`, `get_available_starts` y `get_daily_schedule` concentran los casos de uso y calculan la duración, los intervalos disponibles y los estados de cancelación.
 2. **Modelos Django:** `clean()` y `save()` protegen invariantes del dominio, como mascotas fallecidas, profesionales inactivos, horario de atención y coherencia de la hora final.
-3. **PostgreSQL:** una `ExclusionConstraint` con índice GiST impide solapamientos entre citas programadas del mismo profesional. La extensión `btree_gist` permite combinar la igualdad del profesional con la superposición del rango temporal.
+3. **PostgreSQL:** dos `ExclusionConstraint` con índice GiST impiden solapamientos entre citas programadas del mismo profesional y de la misma mascota. La extensión `btree_gist` permite combinar igualdad con superposición de rangos temporales.
+
+La disponibilidad se expresa como intervalos continuos dentro de las franjas laborales comunes: lunes a viernes de 08:00 a 12:00 y de 13:00 a 18:00; festivos de 10:00 a 12:00 y de 13:00 a 16:00; fines de semana cerrados. El descanso de 12:00 a 13:00 nunca se ofrece. El endpoint de disponibilidad propone inicios cada 15 minutos únicamente cuando la duración completa cabe y no se cruza con otra cita del profesional o de la mascota.
 
 La API REST reutiliza los servicios existentes y no duplica las reglas de negocio en las vistas.
 
@@ -56,6 +58,7 @@ La API REST reutiliza los servicios existentes y no duplica las reglas de negoci
 * La agenda diaria puede reutilizarse desde el frontend, pruebas y futuras integraciones.
 * El sistema falla de forma explícita cuando una operación viola una regla.
 * Las citas canceladas liberan el intervalo porque la restricción solo aplica a citas `SCHEDULED`.
+* La misma mascota no puede reservarse simultáneamente con profesionales diferentes.
 
 ### Negativas y riesgos
 
@@ -68,6 +71,8 @@ La API REST reutiliza los servicios existentes y no duplica las reglas de negoci
 La decisión se validó con:
 
 * `py -3.12 manage.py check`
+* `py -3.12 manage.py check`
 * `py -3.12 manage.py test veterinary`
-* 9 pruebas automatizadas de dominio e integración.
-* Migraciones PostgreSQL `0001_initial` y `0002_remove_appointment_scheduled_appointments_do_not_overlap_and_more` aplicadas correctamente.
+* 23 pruebas automatizadas de dominio, API y disponibilidad.
+* Migraciones PostgreSQL `0001` a `0007` aplicadas correctamente.
+* Pruebas específicas para duración de 60 minutos, descanso, fines de semana, festivos, disponibilidad y solapamiento por mascota.
