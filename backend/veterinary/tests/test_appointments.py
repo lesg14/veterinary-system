@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from veterinary.models import Appointment, ConsultationType, Owner, Pet, Professional
+from veterinary.models import Appointment, Breed, ConsultationType, Owner, Pet, Professional, Species
 from veterinary.services.appointments import (
     cancel_appointment,
     create_appointment,
@@ -19,15 +19,22 @@ class AppointmentServiceTests(TestCase):
             full_name="Ana Torres",
             phone="3000000000",
         )
+        cls.canine, _ = Species.objects.get_or_create(name="Canina")
+        cls.mixed_breed, _ = Breed.objects.get_or_create(
+            species=cls.canine,
+            name="Mestizo",
+        )
         cls.pet = Pet.objects.create(
             owner=cls.owner,
             name="Luna",
-            species="Canina",
+            species=cls.canine,
+            breed=cls.mixed_breed,
         )
         cls.deceased_pet = Pet.objects.create(
             owner=cls.owner,
             name="Milo",
-            species="Felina",
+            species=cls.canine,
+            breed=cls.mixed_breed,
             vital_status=Pet.VitalStatus.DECEASED,
             death_date=datetime(2025, 1, 10).date(),
         )
@@ -195,3 +202,11 @@ class AppointmentServiceTests(TestCase):
             schedule["schedules"][0]["free_slots"][-1]["ends_at"].time(),
             time(18, 0),
         )
+
+        with self.assertRaises(ValidationError):
+            create_appointment(
+                pet=self.pet,
+                professional=self.professional,
+                consultation_type=self.general,
+                starts_at=self.appointment_time(9, 30),
+            )

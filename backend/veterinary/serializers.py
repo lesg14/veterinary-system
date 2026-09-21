@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from veterinary.models import Appointment, ConsultationType, Owner, Pet, Professional, Visit
+from veterinary.models import Appointment, Breed, ConsultationType, Owner, Pet, Professional, Species, Visit
 from veterinary.services.appointments import create_appointment
 
 
@@ -42,13 +42,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class OwnerSerializer(serializers.ModelSerializer):
+    identification = serializers.RegexField(regex=r"^\d{7,10}$", allow_null=True, allow_blank=True)
+    phone = serializers.RegexField(regex=r"^\d{10}$")
+
     class Meta:
         model = Owner
-        fields = ["id", "full_name", "identification", "phone", "email", "address", "is_active"]
+        fields = ["id", "full_name", "identification_type", "identification", "phone", "email", "address", "is_active"]
         read_only_fields = ["id"]
+
+    def validate_full_name(self, value):
+        return " ".join(word.capitalize() for word in value.split())
 
 
 class PetSerializer(serializers.ModelSerializer):
+    species_name = serializers.CharField(source="species.name", read_only=True)
+    breed_name = serializers.CharField(source="breed.name", read_only=True)
+
     class Meta:
         model = Pet
         fields = [
@@ -56,7 +65,9 @@ class PetSerializer(serializers.ModelSerializer):
             "owner",
             "name",
             "species",
+            "species_name",
             "breed",
+            "breed_name",
             "sex",
             "birth_date",
             "vital_status",
@@ -65,6 +76,33 @@ class PetSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        species = attrs.get("species", getattr(self.instance, "species", None))
+        breed = attrs.get("breed", getattr(self.instance, "breed", None))
+        if species and not species.is_active:
+            raise serializers.ValidationError({"species": "La especie está inactiva."})
+        if breed and not breed.is_active:
+            raise serializers.ValidationError({"breed": "La raza está inactiva."})
+        if species and breed and breed.species_id != species.id:
+            raise serializers.ValidationError({"breed": "La raza debe pertenecer a la especie seleccionada."})
+        return attrs
+
+
+class SpeciesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Species
+        fields = ["id", "name", "is_active"]
+        read_only_fields = ["id"]
+
+
+class BreedSerializer(serializers.ModelSerializer):
+    species_name = serializers.CharField(source="species.name", read_only=True)
+
+    class Meta:
+        model = Breed
+        fields = ["id", "species", "species_name", "name", "is_active"]
+        read_only_fields = ["id", "species_name"]
 
 
 class ProfessionalSerializer(serializers.ModelSerializer):
@@ -126,6 +164,8 @@ class VisitSerializer(serializers.ModelSerializer):
 
 
 class PetHistorySerializer(serializers.ModelSerializer):
+    species_name = serializers.CharField(source="species.name", read_only=True)
+    breed_name = serializers.CharField(source="breed.name", read_only=True)
     appointments = AppointmentSerializer(many=True, read_only=True)
     visits = VisitSerializer(many=True, read_only=True)
 
@@ -134,8 +174,8 @@ class PetHistorySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "species",
-            "breed",
+            "species_name",
+            "breed_name",
             "vital_status",
             "appointments",
             "visits",

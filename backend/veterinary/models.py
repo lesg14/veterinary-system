@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Func, Q, Value
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import RegexValidator
 
 
 CLINIC_OPENING_TIME = time(8, 0)
@@ -15,9 +16,16 @@ CANCELLATION_LIMIT = timedelta(hours=2)
 
 
 class Owner(models.Model):
+    class IdentificationType(models.TextChoices):
+        CITIZENSHIP_ID = "CC", _("Cédula de ciudadanía")
+        FOREIGN_ID = "CE", _("Cédula de extranjería")
+        PASSPORT = "PASSPORT", _("Pasaporte")
+        NIT = "NIT", _("NIT")
+
     full_name = models.CharField(max_length=150)
+    identification_type = models.CharField(max_length=10, choices=IdentificationType.choices, default=IdentificationType.CITIZENSHIP_ID)
     identification = models.CharField(max_length=30, unique=True, null=True, blank=True)
-    phone = models.CharField(max_length=30)
+    phone = models.CharField(max_length=10, validators=[RegexValidator(r"^\d{10}$", "El teléfono debe contener exactamente 10 números.")])
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
@@ -31,6 +39,41 @@ class Owner(models.Model):
     def __str__(self):
         return self.full_name
 
+    def save(self, *args, **kwargs):
+        self.full_name = " ".join(word.capitalize() for word in self.full_name.split())
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+class Species(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "especie"
+        verbose_name_plural = "especies"
+
+    def __str__(self):
+        return self.name
+
+
+class Breed(models.Model):
+    species = models.ForeignKey(Species, on_delete=models.PROTECT, related_name="breeds")
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["species", "name"], name="unique_breed_per_species"),
+        ]
+        verbose_name = "raza"
+        verbose_name_plural = "razas"
+
+    def __str__(self):
+        return f"{self.name} ({self.species.name})"
+
 
 class Pet(models.Model):
     class VitalStatus(models.TextChoices):
@@ -39,8 +82,8 @@ class Pet(models.Model):
 
     owner = models.ForeignKey(Owner, on_delete=models.PROTECT, related_name="pets")
     name = models.CharField(max_length=100)
-    species = models.CharField(max_length=80)
-    breed = models.CharField(max_length=100, blank=True)
+    species = models.ForeignKey(Species, on_delete=models.PROTECT, related_name="pets")
+    breed = models.ForeignKey(Breed, on_delete=models.PROTECT, related_name="pets")
     sex = models.CharField(max_length=20, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     vital_status = models.CharField(
@@ -68,10 +111,21 @@ class Pet(models.Model):
 
     def clean(self):
         super().clean()
+        if self.breed_id and self.species_id and self.breed.species_id != self.species_id:
+            raise ValidationError({"breed": "La raza debe pertenecer a la especie seleccionada."})
+        if self.species_id and not self.species.is_active:
+            raise ValidationError({"species": "La especie está inactiva."})
+        if self.breed_id and not self.breed.is_active:
+            raise ValidationError({"breed": "La raza está inactiva."})
         if self.vital_status == self.VitalStatus.DECEASED and self.death_date is None:
             raise ValidationError({"death_date": "Una mascota fallecida debe tener fecha de fallecimiento."})
         if self.vital_status == self.VitalStatus.ALIVE and self.death_date is not None:
             raise ValidationError({"death_date": "Una mascota viva no puede tener fecha de fallecimiento."})
+
+    def save(self, *args, **kwargs):
+        self.name = " ".join(word.capitalize() for word in self.name.split())
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.species})"

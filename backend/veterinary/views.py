@@ -6,7 +6,7 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from veterinary.models import Appointment, ConsultationType, Owner, Pet, Professional, Visit
+from veterinary.models import Appointment, Breed, ConsultationType, Owner, Pet, Professional, Species, Visit
 from veterinary.serializers import (
     AppointmentSerializer,
     ConsultationTypeSerializer,
@@ -14,6 +14,8 @@ from veterinary.serializers import (
     PetHistorySerializer,
     PetSerializer,
     ProfessionalSerializer,
+    BreedSerializer,
+    SpeciesSerializer,
     VisitSerializer,
 )
 from veterinary.services.appointments import cancel_appointment, get_daily_schedule
@@ -30,13 +32,60 @@ class OwnerDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class PetListCreateView(generics.ListCreateAPIView):
-    queryset = Pet.objects.select_related("owner").all()
+    queryset = Pet.objects.select_related("owner", "species", "breed").all()
     serializer_class = PetSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search = self.request.query_params.get("search")
+        species_id = self.request.query_params.get("species")
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        if species_id:
+            queryset = queryset.filter(species_id=species_id)
+        return queryset
 
 
 class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Pet.objects.select_related("owner").all()
+    queryset = Pet.objects.select_related("owner", "species", "breed").all()
     serializer_class = PetSerializer
+
+
+class SpeciesListCreateView(generics.ListCreateAPIView):
+    queryset = Species.objects.all()
+    serializer_class = SpeciesSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        return queryset
+
+
+class SpeciesDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Species.objects.all()
+    serializer_class = SpeciesSerializer
+
+
+class BreedListCreateView(generics.ListCreateAPIView):
+    queryset = Breed.objects.select_related("species").all()
+    serializer_class = BreedSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search = self.request.query_params.get("search")
+        species_id = self.request.query_params.get("species")
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        if species_id:
+            queryset = queryset.filter(species_id=species_id)
+        return queryset
+
+
+class BreedDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Breed.objects.select_related("species").all()
+    serializer_class = BreedSerializer
 
 
 class ProfessionalListCreateView(generics.ListCreateAPIView):

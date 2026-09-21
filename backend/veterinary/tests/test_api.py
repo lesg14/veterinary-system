@@ -4,14 +4,16 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from veterinary.models import ConsultationType, Owner, Pet, Professional
+from veterinary.models import Breed, ConsultationType, Owner, Pet, Professional, Species
 
 
 class VeterinaryApiTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         owner = Owner.objects.create(full_name="Ana Torres", phone="3000000000")
-        cls.pet = Pet.objects.create(owner=owner, name="Luna", species="Canina")
+        cls.species, _ = Species.objects.get_or_create(name="Canina")
+        cls.breed, _ = Breed.objects.get_or_create(species=cls.species, name="Mestizo")
+        cls.pet = Pet.objects.create(owner=owner, name="Luna", species=cls.species, breed=cls.breed)
         cls.professional = Professional.objects.create(
             full_name="Dra. Laura Gomez",
             professional_id="VET-API-001",
@@ -60,7 +62,7 @@ class VeterinaryApiTests(TestCase):
     def test_owner_crud_endpoints_create_list_update_and_delete(self):
         response = self.client.post(
             "/api/owners/",
-            {"full_name": "Carlos Ruiz", "phone": "3110000000"},
+            {"full_name": "Carlos Ruiz", "identification_type": "CC", "identification": "1234567", "phone": "3110000000"},
             format="json",
         )
         self.assertEqual(response.status_code, 201)
@@ -68,7 +70,7 @@ class VeterinaryApiTests(TestCase):
 
         response = self.client.put(
             f"/api/owners/{owner_id}/",
-            {"full_name": "Carlos Ruiz Actualizado", "phone": "3110000000"},
+            {"full_name": "Carlos Ruiz Actualizado", "identification_type": "CC", "identification": "1234567", "phone": "3110000000"},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
@@ -159,3 +161,39 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["starts_at"], "2026-09-21T11:00:00-05:00")
         self.assertEqual(response.data["ends_at"], "2026-09-21T11:30:00-05:00")
+
+    def test_species_and_breed_catalogs_support_crud_filtering_and_pet_validation(self):
+        feline_response = self.client.post(
+            "/api/species/",
+            {"name": "Felina de prueba"},
+            format="json",
+        )
+        self.assertEqual(feline_response.status_code, 201)
+        feline_id = feline_response.data["id"]
+
+        breed_response = self.client.post(
+            "/api/breeds/",
+            {"species": feline_id, "name": "Siamés"},
+            format="json",
+        )
+        self.assertEqual(breed_response.status_code, 201)
+        self.assertEqual(breed_response.data["species_name"], "Felina de prueba")
+
+        filtered = self.client.get(f"/api/breeds/?species={feline_id}&search=siam")
+        self.assertEqual(filtered.status_code, 200)
+        self.assertEqual(len(filtered.data), 1)
+
+        invalid_pet = self.client.post(
+            "/api/pets/",
+            {
+                "owner": self.pet.owner_id,
+                "name": "Nina",
+                "species": feline_id,
+                "breed": self.breed.id,
+                "vital_status": "ALIVE",
+                "is_active": True,
+            },
+            format="json",
+        )
+        self.assertEqual(invalid_pet.status_code, 400)
+        self.assertIn("breed", invalid_pet.data)
