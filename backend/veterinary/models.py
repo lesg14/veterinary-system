@@ -57,6 +57,11 @@ class Species(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        self.name = " ".join(word.capitalize() for word in self.name.split())
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
 
 class Breed(models.Model):
     species = models.ForeignKey(Species, on_delete=models.PROTECT, related_name="breeds")
@@ -73,6 +78,11 @@ class Breed(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.species.name})"
+
+    def save(self, *args, **kwargs):
+        self.name = " ".join(word.capitalize() for word in self.name.split())
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class Pet(models.Model):
@@ -132,10 +142,17 @@ class Pet(models.Model):
 
 
 class Professional(models.Model):
+    class IdentificationType(models.TextChoices):
+        CITIZENSHIP_ID = "CC", _("Cédula de ciudadanía")
+        FOREIGN_ID = "CE", _("Cédula de extranjería")
+        PASSPORT = "PASSPORT", _("Pasaporte")
+        NIT = "NIT", _("NIT")
+
     full_name = models.CharField(max_length=150)
-    professional_id = models.CharField(max_length=50, unique=True)
+    identification_type = models.CharField(max_length=10, choices=IdentificationType.choices, default=IdentificationType.CITIZENSHIP_ID)
+    professional_id = models.CharField(max_length=10, unique=True, validators=[RegexValidator(r"^\d{7,10}$", "La identificación debe contener entre 7 y 10 números.")])
     specialty = models.CharField(max_length=120, blank=True)
-    phone = models.CharField(max_length=30, blank=True)
+    phone = models.CharField(max_length=10, blank=True, validators=[RegexValidator(r"^\d{10}$", "El teléfono debe contener exactamente 10 números.")])
     email = models.EmailField(blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -146,6 +163,11 @@ class Professional(models.Model):
 
     def __str__(self):
         return self.full_name
+
+    def save(self, *args, **kwargs):
+        self.full_name = " ".join(word.capitalize() for word in self.full_name.split())
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class ConsultationType(models.Model):
@@ -171,6 +193,7 @@ class ConsultationType(models.Model):
             raise ValidationError({"description": "Debe describir el motivo cuando el tipo es Otro."})
 
     def save(self, *args, **kwargs):
+        self.name = " ".join(word.capitalize() for word in self.name.split())
         self.full_clean()
         return super().save(*args, **kwargs)
 

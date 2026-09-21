@@ -40,11 +40,11 @@ class AppointmentServiceTests(TestCase):
         )
         cls.professional = Professional.objects.create(
             full_name="Dra. Laura Gomez",
-            professional_id="VET-001",
+            professional_id="1234568",
         )
         cls.other_professional = Professional.objects.create(
             full_name="Dr. Carlos Perez",
-            professional_id="VET-002",
+            professional_id="1234569",
         )
         cls.general = ConsultationType.objects.create(
             name="Consulta general",

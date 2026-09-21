@@ -95,6 +95,9 @@ class SpeciesSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "is_active"]
         read_only_fields = ["id"]
 
+    def validate_name(self, value):
+        return " ".join(word.capitalize() for word in value.split())
+
 
 class BreedSerializer(serializers.ModelSerializer):
     species_name = serializers.CharField(source="species.name", read_only=True)
@@ -104,13 +107,20 @@ class BreedSerializer(serializers.ModelSerializer):
         fields = ["id", "species", "species_name", "name", "is_active"]
         read_only_fields = ["id", "species_name"]
 
+    def validate_name(self, value):
+        return " ".join(word.capitalize() for word in value.split())
+
 
 class ProfessionalSerializer(serializers.ModelSerializer):
+    professional_id = serializers.RegexField(regex=r"^\d{7,10}$")
+    phone = serializers.RegexField(regex=r"^\d{10}$", allow_blank=True)
+
     class Meta:
         model = Professional
         fields = [
             "id",
             "full_name",
+            "identification_type",
             "professional_id",
             "specialty",
             "phone",
@@ -119,14 +129,20 @@ class ProfessionalSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def validate_full_name(self, value):
+        return " ".join(word.capitalize() for word in value.split())
+
 
 class ConsultationTypeSerializer(serializers.ModelSerializer):
+    duration_minutes = serializers.IntegerField(min_value=1)
     class Meta:
         model = ConsultationType
         fields = ["id", "name", "description", "duration_minutes", "is_active"]
         read_only_fields = ["id"]
 
     def validate(self, attrs):
+        if "name" in attrs:
+            attrs["name"] = " ".join(word.capitalize() for word in attrs["name"].split())
         name = attrs.get("name", getattr(self.instance, "name", ""))
         description = attrs.get("description", getattr(self.instance, "description", ""))
         if name.strip().lower() == "otro" and not description.strip():

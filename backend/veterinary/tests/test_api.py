@@ -16,7 +16,7 @@ class VeterinaryApiTests(TestCase):
         cls.pet = Pet.objects.create(owner=owner, name="Luna", species=cls.species, breed=cls.breed)
         cls.professional = Professional.objects.create(
             full_name="Dra. Laura Gomez",
-            professional_id="VET-API-001",
+            professional_id="1234567",
         )
         cls.consultation_type = ConsultationType.objects.create(
             name="Consulta API",
@@ -134,6 +134,37 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["description"], "Consulta solicitada por comportamiento inusual")
 
+    def test_professional_validates_identification_phone_and_normalizes_name(self):
+        response = self.client.post(
+            "/api/professionals/",
+            {
+                "full_name": "laura gomez",
+                "identification_type": "CC",
+                "professional_id": "12345678",
+                "phone": "3001234567",
+                "email": "laura@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["full_name"], "Laura Gomez")
+
+        invalid = self.client.post(
+            "/api/professionals/",
+            {
+                "full_name": "Otra Persona",
+                "identification_type": "CC",
+                "professional_id": "ABC123",
+                "phone": "300-123",
+                "email": "correo-invalido",
+            },
+            format="json",
+        )
+
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn("professional_id", invalid.data)
+
     def test_appointment_can_be_rescheduled_and_recalculates_end(self):
         appointment = self.client.post(
             "/api/appointments/",
@@ -177,7 +208,7 @@ class VeterinaryApiTests(TestCase):
             format="json",
         )
         self.assertEqual(breed_response.status_code, 201)
-        self.assertEqual(breed_response.data["species_name"], "Felina de prueba")
+        self.assertEqual(breed_response.data["species_name"], "Felina De Prueba")
 
         filtered = self.client.get(f"/api/breeds/?species={feline_id}&search=siam")
         self.assertEqual(filtered.status_code, 200)
