@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
@@ -45,6 +45,35 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(response.data["status"], "SCHEDULED")
         self.assertEqual(response.data["ends_at"], "2026-09-21T09:30:00-05:00")
 
+    def test_pet_cannot_overlap_appointments_across_professionals(self):
+        other_professional = Professional.objects.create(
+            full_name="Dr. Carlos Perez",
+            professional_id="1234569",
+        )
+        first = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": self.starts_at.isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(first.status_code, 201)
+        second = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": other_professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": (self.starts_at + timedelta(minutes=15)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(second.status_code, 400)
+        self.assertIn("starts_at", second.data)
+
     def test_daily_agenda_endpoint_returns_free_slots(self):
         response = self.client.get(
             "/api/agenda/",
@@ -58,6 +87,58 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(len(response.data["schedules"]), 1)
         first_free_slot = response.data["schedules"][0]["free_slots"][0]
         self.assertEqual(first_free_slot["starts_at"].time(), time(8, 0))
+        self.assertEqual(
+            response.data["work_intervals"],
+            [
+                {"starts_at": self.starts_at.replace(hour=8, minute=0), "ends_at": self.starts_at.replace(hour=12, minute=0)},
+                {"starts_at": self.starts_at.replace(hour=13, minute=0), "ends_at": self.starts_at.replace(hour=18, minute=0)},
+            ],
+        )
+
+    def test_appointment_history_endpoint_filters_all_statuses(self):
+        response = self.client.get("/api/appointments/history/?status=ALL&search=Luna")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
+        appointment = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": self.starts_at.isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(appointment.status_code, 201)
+        response = self.client.get("/api/appointments/history/?status=SCHEDULED&pet_id=%s" % self.pet.id)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["pet_name"], "Luna")
+
+    def test_appointment_availability_endpoint_uses_duration(self):
+        self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": self.starts_at.isoformat(),
+            },
+            format="json",
+        )
+        response = self.client.get(
+            "/api/appointments/availability/",
+            {
+                "date": "2026-09-21",
+                "professional_id": self.professional.id,
+                "duration_minutes": 60,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        starts = [value.time() for value in response.data["starts_at"]]
+        self.assertNotIn(time(8, 30), starts)
+        self.assertIn(time(10, 0), starts)
 
     def test_owner_crud_endpoints_create_list_update_and_delete(self):
         response = self.client.post(

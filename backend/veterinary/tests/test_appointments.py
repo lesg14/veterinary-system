@@ -8,6 +8,7 @@ from veterinary.models import Appointment, Breed, ConsultationType, Owner, Pet, 
 from veterinary.services.appointments import (
     cancel_appointment,
     create_appointment,
+    get_available_starts,
     get_daily_schedule,
 )
 
@@ -55,9 +56,9 @@ class AppointmentServiceTests(TestCase):
             duration_minutes=45,
         )
 
-    def appointment_time(self, hour=9, minute=0):
+    def appointment_time(self, hour=9, minute=0, day=None):
         return timezone.make_aware(
-            datetime.combine(datetime(2026, 9, 21).date(), time(hour, minute))
+            datetime.combine(day or datetime(2026, 9, 21).date(), time(hour, minute))
         )
 
     def test_duration_is_calculated_from_consultation_type(self):
@@ -86,7 +87,28 @@ class AppointmentServiceTests(TestCase):
                 starts_at=self.appointment_time(9, 15),
             )
 
+    def test_available_starts_respect_duration_and_existing_appointments(self):
+        create_appointment(
+            pet=self.pet,
+            professional=self.professional,
+            consultation_type=self.general,
+            starts_at=self.appointment_time(9),
+        )
+        starts = get_available_starts(
+            day=datetime(2026, 9, 21).date(),
+            professional=self.professional,
+            duration_minutes=60,
+        )
+        self.assertNotIn(self.appointment_time(8, 30), starts)
+        self.assertIn(self.appointment_time(10), starts)
+
     def test_different_professionals_can_have_same_time(self):
+        other_pet = Pet.objects.create(
+            owner=self.owner,
+            name="Nala",
+            species=self.canine,
+            breed=self.mixed_breed,
+        )
         create_appointment(
             pet=self.pet,
             professional=self.professional,
@@ -94,13 +116,29 @@ class AppointmentServiceTests(TestCase):
             starts_at=self.appointment_time(),
         )
         appointment = create_appointment(
-            pet=self.pet,
+            pet=other_pet,
             professional=self.other_professional,
             consultation_type=self.general,
             starts_at=self.appointment_time(),
         )
 
         self.assertEqual(appointment.professional, self.other_professional)
+
+    def test_same_pet_cannot_have_overlapping_appointments_with_different_professionals(self):
+        create_appointment(
+            pet=self.pet,
+            professional=self.professional,
+            consultation_type=self.specialized,
+            starts_at=self.appointment_time(),
+        )
+
+        with self.assertRaises(ValidationError):
+            create_appointment(
+                pet=self.pet,
+                professional=self.other_professional,
+                consultation_type=self.general,
+                starts_at=self.appointment_time(9, 30),
+            )
 
     def test_deceased_pet_cannot_receive_new_appointment(self):
         with self.assertRaises(ValidationError):
@@ -164,18 +202,22 @@ class AppointmentServiceTests(TestCase):
         )
         self.assertEqual(
             professional_schedule["free_slots"][0]["ends_at"].time(),
-            time(8, 30),
+            time(9, 0),
         )
 
-    def test_empty_daily_schedule_has_twenty_half_hour_blocks(self):
+    def test_empty_daily_schedule_has_two_continuous_work_intervals(self):
         schedule = get_daily_schedule(
             day=datetime(2026, 9, 22).date(),
             professional=self.professional,
         )
 
-        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 20)
+        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 2)
+        self.assertEqual(schedule["schedules"][0]["free_slots"][0]["starts_at"].time(), time(8, 0))
+        self.assertEqual(schedule["schedules"][0]["free_slots"][0]["ends_at"].time(), time(12, 0))
+        self.assertEqual(schedule["schedules"][0]["free_slots"][1]["starts_at"].time(), time(13, 0))
+        self.assertEqual(schedule["schedules"][0]["free_slots"][1]["ends_at"].time(), time(18, 0))
 
-    def test_sixty_minute_consultation_uses_two_half_hour_blocks(self):
+    def test_sixty_minute_consultation_uses_real_duration_in_free_intervals(self):
         consultation = ConsultationType.objects.create(
             name="Procedimiento",
             duration_minutes=60,
@@ -193,14 +235,14 @@ class AppointmentServiceTests(TestCase):
             professional=self.professional,
         )
 
-        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 18)
+        self.assertEqual(len(schedule["schedules"][0]["free_slots"]), 3)
         self.assertEqual(
             schedule["schedules"][0]["free_slots"][0]["starts_at"].time(),
             time(8, 0),
         )
         self.assertEqual(
-            schedule["schedules"][0]["free_slots"][-1]["ends_at"].time(),
-            time(18, 0),
+            schedule["schedules"][0]["free_slots"][1]["starts_at"].time(),
+            time(10, 0),
         )
 
         with self.assertRaises(ValidationError):
@@ -210,3 +252,29 @@ class AppointmentServiceTests(TestCase):
                 consultation_type=self.general,
                 starts_at=self.appointment_time(9, 30),
             )
+
+    def test_schedule_excludes_lunch_weekends_and_uses_holiday_hours(self):
+        with self.assertRaises(ValidationError):
+            create_appointment(
+                pet=self.pet,
+                professional=self.professional,
+                consultation_type=self.general,
+                starts_at=self.appointment_time(12),
+            )
+
+        with self.assertRaises(ValidationError):
+            create_appointment(
+                pet=self.pet,
+                professional=self.professional,
+                consultation_type=self.general,
+                starts_at=self.appointment_time(9, day=datetime(2026, 9, 20).date()),
+            )
+
+        holiday_schedule = get_daily_schedule(
+            day=datetime(2026, 1, 1).date(),
+            professional=self.professional,
+        )
+        self.assertEqual(
+            [(slot["starts_at"].time(), slot["ends_at"].time()) for slot in holiday_schedule["schedules"][0]["free_slots"]],
+            [(time(10, 0), time(12, 0)), (time(13, 0), time(16, 0))],
+        )

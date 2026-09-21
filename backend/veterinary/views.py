@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
@@ -18,7 +19,7 @@ from veterinary.serializers import (
     SpeciesSerializer,
     VisitSerializer,
 )
-from veterinary.services.appointments import cancel_appointment, get_daily_schedule
+from veterinary.services.appointments import cancel_appointment, get_available_starts, get_daily_schedule
 
 
 class OwnerListCreateView(generics.ListCreateAPIView):
@@ -144,6 +145,50 @@ class AppointmentDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = AppointmentSerializer
 
 
+class AppointmentHistoryView(generics.ListAPIView):
+    queryset = Appointment.objects.select_related("pet", "professional", "consultation_type").all()
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        status_filter = self.request.query_params.get("status")
+        search = self.request.query_params.get("search")
+        professional_id = self.request.query_params.get("professional_id")
+        pet_id = self.request.query_params.get("pet_id")
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+        if status_filter and status_filter != "ALL":
+            queryset = queryset.filter(status=status_filter)
+        if search:
+            queryset = queryset.filter(
+                Q(pet__name__icontains=search)
+                | Q(professional__full_name__icontains=search)
+                | Q(consultation_type__name__icontains=search)
+            )
+        if professional_id:
+            queryset = queryset.filter(professional_id=professional_id)
+        if pet_id:
+            queryset = queryset.filter(pet_id=pet_id)
+        if date_from:
+            queryset = queryset.filter(starts_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(starts_at__date__lte=date_to)
+        return queryset.order_by("-starts_at")
+
+
+class AppointmentAvailabilityView(APIView):
+    def get(self, request):
+        try:
+            requested_date = date.fromisoformat(request.query_params["date"])
+            professional_id = int(request.query_params["professional_id"])
+            duration_minutes = int(request.query_params["duration_minutes"])
+            pet_id = int(request.query_params["pet_id"]) if request.query_params.get("pet_id") else None
+        except (KeyError, TypeError, ValueError):
+            return Response({"detail": "date, professional_id y duration_minutes son obligatorios."}, status=400)
+        starts = get_available_starts(day=requested_date, professional=professional_id, duration_minutes=duration_minutes, pet=pet_id)
+        return Response({"date": requested_date, "starts_at": starts})
+
+
 class AppointmentCancelView(APIView):
     def post(self, request, appointment_id):
         appointment = get_object_or_404(Appointment, pk=appointment_id)
@@ -174,6 +219,10 @@ class DailyAgendaView(APIView):
                 "date": schedule["date"],
                 "opening": schedule["opening"],
                 "closing": schedule["closing"],
+                "work_intervals": [
+                    {"starts_at": starts_at, "ends_at": ends_at}
+                    for starts_at, ends_at in schedule["work_intervals"]
+                ],
                 "schedules": [
                     {
                         "professional_id": item["professional"].id,

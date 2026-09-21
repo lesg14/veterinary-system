@@ -4,6 +4,8 @@ from veterinary.views import (
     AppointmentCancelView,
     AppointmentCreateView,
     AppointmentDetailView,
+    AppointmentHistoryView,
+    AppointmentAvailabilityView,
     BreedDetailView,
     BreedListCreateView,
     ConsultationTypeDetailView,
@@ -40,6 +42,8 @@ urlpatterns = [
     path("visits/<int:pk>/", VisitDetailView.as_view(), name="visit-detail"),
     path("appointments/", AppointmentCreateView.as_view(), name="appointment-create"),
     path("appointments/<int:pk>/", AppointmentDetailView.as_view(), name="appointment-detail"),
+    path("appointments/history/", AppointmentHistoryView.as_view(), name="appointment-history"),
+    path("appointments/availability/", AppointmentAvailabilityView.as_view(), name="appointment-availability"),
     path(
         "appointments/<int:appointment_id>/cancel/",
         AppointmentCancelView.as_view(),

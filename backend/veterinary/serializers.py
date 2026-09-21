@@ -27,9 +27,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "starts_at",
             "ends_at",
             "status",
+            "cancellation_requested_at",
+            "created_at",
             "notes",
         ]
-        read_only_fields = ["id", "ends_at", "status"]
+        read_only_fields = ["id", "ends_at", "status", "cancellation_requested_at", "created_at"]
 
     def create(self, validated_data):
         return create_appointment(**validated_data)

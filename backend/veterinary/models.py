@@ -1,4 +1,4 @@
-from datetime import time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import RangeOperators
@@ -10,9 +10,50 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
 
 
-CLINIC_OPENING_TIME = time(8, 0)
-CLINIC_CLOSING_TIME = time(18, 0)
+REGULAR_CLINIC_INTERVALS = ((time(8, 0), time(12, 0)), (time(13, 0), time(18, 0)))
+HOLIDAY_CLINIC_INTERVALS = ((time(10, 0), time(12, 0)), (time(13, 0), time(16, 0)))
 CANCELLATION_LIMIT = timedelta(hours=2)
+
+
+def _easter_sunday(year):
+    """Calcula Pascua para derivar los festivos móviles colombianos."""
+    golden_year = year % 19
+    century = year // 100
+    solar_correction = century - century // 4 - (8 * century + 13) // 25
+    lunar_correction = (19 * golden_year + century - century // 4 - solar_correction + 15) % 30
+    weekday_correction = (year + year // 4 + lunar_correction + 2 - century + century // 4) % 7
+    month_day = lunar_correction - weekday_correction + 19
+    month = 3 + month_day // 32
+    day = month_day % 31 + 1
+    return date(year, month, day) + timedelta(days=7)
+
+
+def _next_monday(day):
+    return day + timedelta(days=(7 - day.weekday()) % 7)
+
+
+def is_colombian_holiday(day):
+    easter = _easter_sunday(day.year)
+    fixed_holidays = ((1, 1), (5, 1), (7, 20), (8, 7), (12, 8), (12, 25))
+    transferred_holidays = ((1, 6), (3, 19), (6, 29), (8, 15), (10, 12), (11, 1), (11, 11))
+    fixed_days = {date(day.year, month, day_number) for month, day_number in fixed_holidays}
+    fixed_days.update(_next_monday(date(day.year, month, day_number)) for month, day_number in transferred_holidays)
+    movable_days = {easter - timedelta(days=3), easter - timedelta(days=2), easter + timedelta(days=39), easter + timedelta(days=60), easter + timedelta(days=68)}
+    return day in fixed_days or day in movable_days
+
+
+def clinic_intervals_for_day(day):
+    if day.weekday() >= 5:
+        return ()
+    return HOLIDAY_CLINIC_INTERVALS if is_colombian_holiday(day) else REGULAR_CLINIC_INTERVALS
+
+
+def clinic_datetimes_for_day(day):
+    zone = timezone.get_current_timezone()
+    return tuple(
+        (timezone.make_aware(datetime.combine(day, opening), zone), timezone.make_aware(datetime.combine(day, closing), zone))
+        for opening, closing in clinic_intervals_for_day(day)
+    )
 
 
 class Owner(models.Model):
@@ -251,6 +292,23 @@ class Appointment(models.Model):
                 condition=Q(status="SCHEDULED"),
                 index_type="GIST",
             ),
+            ExclusionConstraint(
+                name="pet_scheduled_appointments_do_not_overlap",
+                expressions=[
+                    ("pet", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            "starts_at",
+                            "ends_at",
+                            Value("[)"),
+                            function="TSTZRANGE",
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="SCHEDULED"),
+                index_type="GIST",
+            ),
         ]
         indexes = [
             models.Index(fields=["professional", "starts_at"]),
@@ -278,11 +336,11 @@ class Appointment(models.Model):
             local_end = timezone.localtime(calculated_end)
             if local_start.date() != local_end.date():
                 errors["starts_at"] = "La cita debe finalizar el mismo día."
-            elif (
-                local_start.time() < CLINIC_OPENING_TIME
-                or local_end.time() > CLINIC_CLOSING_TIME
+            elif not any(
+                local_start.time() >= opening and local_end.time() <= closing
+                for opening, closing in clinic_intervals_for_day(local_start.date())
             ):
-                errors["starts_at"] = "La cita debe estar dentro del horario 08:00-18:00."
+                errors["starts_at"] = "La cita debe estar dentro del horario laboral y no puede ocupar el descanso del mediodía."
 
         if self.pet_id and self.pet.vital_status == Pet.VitalStatus.DECEASED:
             if self._state.adding and self.status == self.Status.SCHEDULED:
@@ -309,6 +367,17 @@ class Appointment(models.Model):
         if overlapping.exists():
             raise ValidationError(
                 {"starts_at": "El profesional ya tiene una cita en ese intervalo."}
+            )
+
+        pet_overlapping = Appointment.objects.filter(
+            pet_id=self.pet_id,
+            status=self.Status.SCHEDULED,
+            starts_at__lt=self.ends_at,
+            ends_at__gt=self.starts_at,
+        ).exclude(pk=self.pk)
+        if pet_overlapping.exists():
+            raise ValidationError(
+                {"starts_at": "La mascota ya tiene una cita que se cruza con ese intervalo, sin importar el profesional."}
             )
 
     def save(self, *args, **kwargs):
