@@ -76,7 +76,7 @@ export default function AttentionsPage() {
           <span className={styles.brandMark}>
             <PawPrint size={19} />
           </span>
-          <span>vetline</span>
+          <span>RockyVet</span>
         </Link>
         <div className={styles.sideIntro}>
           <span>HISTORIAL CLÍNICO</span>

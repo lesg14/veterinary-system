@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vetline | Agenda clínica",
+  title: "RockyVet | Agenda clínica",
   description: "Agenda operativa para una clínica veterinaria",
 };
 

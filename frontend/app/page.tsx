@@ -178,7 +178,7 @@ export default function Home() {
           <span className={styles.brandMark}>
             <PawPrint size={19} />
           </span>
-          <span>vetline</span>
+          <span>RockyVet</span>
         </div>
         <div className={styles.clinicSwitch}>
           <span className={styles.clinicDot} /> Clínica Central{" "}
