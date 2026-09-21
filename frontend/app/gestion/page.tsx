@@ -737,6 +737,7 @@ function EditorModal({
                 type="email"
                 value={form.email as string}
                 onChange={(value) => update("email", value)}
+                required
               />
               <Field
                 label="Dirección"
