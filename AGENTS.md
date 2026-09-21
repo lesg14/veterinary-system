@@ -16,8 +16,10 @@ El siguiente prompt se utilizará para iniciar la interacción con el agente en 
 
 *(Este archivo se actualizará con nuevas reglas estrictas a medida que el agente requiera más contexto o cometa errores que deban prevenirse).*
 
-## Regla de ajuste actual (2026-09-20)
-Se reconoce explícitamente que la agenda debe medirse por bloques de 30 minutos y no por huecos contiguos. Los espacios libres se computan como unidades discretas dentro del horario clínico (08:00-18:00), de modo que una jornada sin citas tiene 20 bloques disponibles.
+## Regla de agenda actual (2026-09-20)
+La agenda se calcula por intervalos continuos de disponibilidad y no por bloques artificiales de 30 minutos. La regla principal es impedir solapamientos usando la duración real del tipo de consulta.
+
+También se impide que una misma mascota tenga citas solapadas el mismo día, aunque correspondan a profesionales distintos. La disponibilidad de nuevas citas se calcula según la duración, la jornada, el profesional, la mascota y las citas existentes.
 
 ## Reglas de validación que deben mantenerse
 1. La validación de solapamiento y horario laboral debe vivir en backend y no depender del frontend.
@@ -25,15 +27,21 @@ Se reconoce explícitamente que la agenda debe medirse por bloques de 30 minutos
 3. La actualización de una cita debe recalcular `ends_at` en función de la duración del tipo de consulta y volver a verificar solapamiento antes de guardar.
 4. El detalle de la cita debe presentarse con nombres de mascota, profesional y tipo de consulta, no con IDs crudos.
 5. La vista de agenda debe reflejar la real disponibilidad del profesional y no una cuenta por hueco general.
-6. Especie y raza son catálogos persistentes administrables; las razas deben pertenecer a una especie activa.
-7. El formulario de mascotas consume los catálogos desde la API, permite búsqueda por texto y filtra las razas según la especie seleccionada.
-8. Los nombres de propietarios y mascotas se normalizan con la primera letra de cada palabra en mayúscula.
-9. El propietario debe registrar tipo de identificación, identificación numérica de 7 a 10 dígitos, teléfono numérico de 10 dígitos y correo válido.
-10. El sexo de la mascota se limita a `Macho` o `Hembra` desde el formulario.
+6. Todos los profesionales comparten el mismo horario: lunes a viernes de 08:00 a 12:00 y de 13:00 a 18:00.
+7. Los sábados y domingos no tienen jornada laboral ni permiten nuevas citas.
+8. Los festivos operan de 10:00 a 12:00 y de 13:00 a 16:00.
+9. El descanso del mediodía de 12:00 a 13:00 nunca está disponible.
+10. Especie y raza son catálogos persistentes administrables; las razas deben pertenecer a una especie activa.
+11. El formulario de mascotas consume los catálogos desde la API, permite búsqueda por texto y filtra las razas según la especie seleccionada.
+12. Los nombres de propietarios y mascotas se normalizan con la primera letra de cada palabra en mayúscula.
+13. El propietario debe registrar tipo de identificación, identificación numérica de 7 a 10 dígitos, teléfono numérico de 10 dígitos y correo válido.
+14. El sexo de la mascota se limita a `Macho` o `Hembra` desde el formulario.
 
 ## Estado técnico verificado (2026-09-20)
 
-- Migraciones `0003_species_breed_catalogs`, `0004_seed_canine_feline_breeds` y `0005_owner_identification_type` aplicadas.
+- Migraciones `0003` a `0007` aplicadas, incluyendo identificación profesional y restricción de solapamiento por mascota.
 - Catálogos cargados: 82 razas caninas y 46 razas felinas.
 - CRUD REST disponible para especies y razas, con filtros por búsqueda y especie.
 - Las validaciones existen en frontend y backend; el backend continúa siendo la fuente de verdad.
+- El histórico global está disponible en `/api/appointments/history/` y en la pantalla `/historial`.
+- La última validación ejecutó 23 pruebas backend y un build exitoso de Next.js.

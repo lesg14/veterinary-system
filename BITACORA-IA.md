@@ -42,9 +42,14 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 
 ## Sesión 8: 2026-09-19
 *   **Qué pedí:** Corregir la representación del tiempo libre y completar el módulo de tipos de consulta, además de habilitar el reagendamiento desde la cita.
-*   **Qué propuso el agente:** Dividir el espacio libre en bloques de 30 minutos, exponer `ConsultationType` con CRUD y un campo obligatorio para `Otro`, y reusar la API de citas para actualizar `starts_at` sin romper validaciones.
-*   **Decisión (Aceptado/Rechazado):** Aceptado. Se implementó la regla de 20 espacios libres por jornada, la enumeración de tipos de consulta y el detalle de cita con nombre legible del paciente, profesional y tipo.
-*   **Qué quedó verificado:** `manage.py check`, pruebas de backend y build de Next.js exitosos. La agenda ahora cuenta espacios libres por bloque de 30 minutos y el detalle de la cita ya no expone IDs al usuario.
+*   **Qué propuso el agente:** Calcular los espacios libres como intervalos continuos dentro de la jornada laboral de cada profesional, descontando sus citas programadas y el descanso del mediodía. También exponer `ConsultationType` con CRUD y un campo obligatorio para `Otro`, y reutilizar la API de citas para actualizar `starts_at` sin romper validaciones.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Un espacio libre representa el horario real en el que el profesional puede atender; no representa bloques fijos de 30 minutos ni un conteo artificial de huecos.
+*   **Qué quedó verificado:** `manage.py check`, pruebas de backend y build de Next.js exitosos. La agenda devuelve intervalos disponibles respetando jornada, descanso y citas existentes.
+
+## Sesión 9: 2026-09-20
+*   **Qué pedí:** Dejar registrado el estado real del proyecto en la documentación autorizada.
+*   **Qué decidió el agente:** Actualizar los documentos de contexto (`AGENTS.md`, `ASSUMPTIONS.md` y esta bitácora) con el estado verificado del sistema en producción local.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Los archivos quedaron alineados con la implementación real, no con la intención inicial del proyecto.
 
 ## Sesión 10: 2026-09-20
 *   **Qué pedí:** Crear catálogos persistentes de especies y razas, permitir búsqueda y filtros, y dejar de utilizar datos estáticos en el formulario de mascotas.
@@ -63,7 +68,26 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 *   **Qué decidió el agente:** Crear `91755a5` para backend y `3646085` para frontend, manteniendo separados modelos, migraciones, API, pruebas y componentes de interfaz.
 *   **Decisión (Aceptado/Rechazado):** Aceptado. El repositorio quedó limpio después de validar 16 pruebas backend y el build frontend.
 
-## Sesión 9: 2026-09-20
-*   **Qué pedí:** Dejar registrado el estado real del proyecto en la documentación autorizada.
-*   **Qué decidió el agente:** Actualizar los documentos de contexto (`AGENTS.md`, `ASSUMPTIONS.md` y esta bitácora) con el estado verificado del sistema en producción local.
-*   **Decisión (Aceptado/Rechazado):** Aceptado. Los archivos quedaron alineados con la implementación real, no con la intención inicial del proyecto.
+## Sesión 13: 2026-09-20
+*   **Qué pedí:** Ajustar el dilema de la agenda: eliminar la dependencia de bloques de 30 minutos, evitar solapamientos por duración real, usar un horario común, cerrar fines de semana, definir horario de festivos y respetar el descanso del mediodía.
+*   **Qué decidió el agente:** Cambiar la disponibilidad a intervalos continuos, mantener el cálculo de `ends_at` según el tipo de consulta y centralizar las franjas laborales en el backend.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se configuró lunes a viernes de 08:00-12:00 y 13:00-18:00, festivos de 10:00-12:00 y 13:00-16:00, y fines de semana cerrados.
+*   **Qué quedó verificado:** 10 pruebas específicas de agenda pasan; se cubren duración de 60 minutos, almuerzo, fin de semana y festivo.
+
+## Sesión 14: 2026-09-20
+*   **Qué pedí:** Impedir que una mascota tenga citas solapadas el mismo día aunque sean con profesionales diferentes.
+*   **Qué decidió el agente:** Agregar validación de dominio, restricción PostgreSQL y filtrado de disponibilidad por profesional y mascota.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. La migración `0007_pet_appointment_overlap_constraint` resolvió conflictos históricos sin eliminar registros.
+*   **Qué quedó verificado:** La regla quedó cubierta por pruebas de servicio y API.
+
+## Sesión 15: 2026-09-20
+*   **Qué pedí:** Crear el submenú Historial y retirar Atenciones como submenú independiente.
+*   **Qué decidió el agente:** Crear `/historial` y `/api/appointments/history/` con filtros por estado, texto, mascota, profesional y rango de fechas. El registro de atención permanece disponible desde el detalle de la cita.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. El histórico conserva todas las citas, incluidas canceladas e inasistencias; Atenciones dejó de aparecer en la navegación principal.
+*   **Qué quedó verificado:** La ruta `/historial` compila y el frontend genera siete rutas correctamente.
+
+## Sesión 16: 2026-09-20
+*   **Qué pedí:** Hacer visibles los espacios libres como horarios reales del profesional y validar los horarios disponibles antes de crear una cita.
+*   **Qué decidió el agente:** Mostrar cada intervalo continuo disponible en la agenda y conectar el formulario de nueva cita con `/api/appointments/availability/`, considerando jornada, descanso, duración, profesional, mascota y citas existentes.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Los espacios libres dejaron de ser un contador abstracto y pasaron a mostrarse como rangos horarios que pueden utilizarse para atender.
+*   **Qué quedó verificado:** La suite backend alcanzó 23 pruebas y el build frontend continúa exitoso.
