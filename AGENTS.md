@@ -25,3 +25,15 @@ Se reconoce explícitamente que la agenda debe medirse por bloques de 30 minutos
 3. La actualización de una cita debe recalcular `ends_at` en función de la duración del tipo de consulta y volver a verificar solapamiento antes de guardar.
 4. El detalle de la cita debe presentarse con nombres de mascota, profesional y tipo de consulta, no con IDs crudos.
 5. La vista de agenda debe reflejar la real disponibilidad del profesional y no una cuenta por hueco general.
+6. Especie y raza son catálogos persistentes administrables; las razas deben pertenecer a una especie activa.
+7. El formulario de mascotas consume los catálogos desde la API, permite búsqueda por texto y filtra las razas según la especie seleccionada.
+8. Los nombres de propietarios y mascotas se normalizan con la primera letra de cada palabra en mayúscula.
+9. El propietario debe registrar tipo de identificación, identificación numérica de 7 a 10 dígitos, teléfono numérico de 10 dígitos y correo válido.
+10. El sexo de la mascota se limita a `Macho` o `Hembra` desde el formulario.
+
+## Estado técnico verificado (2026-09-20)
+
+- Migraciones `0003_species_breed_catalogs`, `0004_seed_canine_feline_breeds` y `0005_owner_identification_type` aplicadas.
+- Catálogos cargados: 82 razas caninas y 46 razas felinas.
+- CRUD REST disponible para especies y razas, con filtros por búsqueda y especie.
+- Las validaciones existen en frontend y backend; el backend continúa siendo la fuente de verdad.

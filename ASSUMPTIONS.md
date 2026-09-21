@@ -12,6 +12,11 @@ Dado que el requerimiento inicial omite ciertos detalles operativos necesarios p
 8.  **Citas ocupadas:** La agenda considera como ocupados los estados `PROGRAMADA`, `ATENDIDA` e `INASISTENCIA`. Las citas `CANCELADA` liberan el espacio.
 9.  **Bloques de disponibilidad:** La disponibilidad se expresa en bloques de 30 minutos. Un día completo de 10 horas tiene exactamente **20 bloques libres** cuando no hay citas agendadas. El conteo por huecos contiguos se descarta para evitar subreportar la agenda.
 10. **Detalle humano de la cita:** Los usuarios no deben ver IDs en la vista de detalle o en la tarjeta de agenda; la interfaz debe mostrar nombre de mascota, nombre del profesional y tipo de consulta con duración legible.
+11. **Catálogos de mascotas:** Especies y razas se almacenan como entidades administrables en PostgreSQL. Una raza pertenece a una única especie y no puede utilizarse con otra.
+12. **Carga inicial de razas:** El catálogo inicial contiene 82 razas caninas y 46 felinas. La carga se realiza mediante migración idempotente y puede ampliarse desde Configuración.
+13. **Búsqueda de catálogos:** Los selectores de especie y raza permiten escribir para filtrar resultados; el selector de raza solo muestra razas activas de la especie seleccionada.
+14. **Datos del propietario:** El tipo de identificación se selecciona de un catálogo controlado. La identificación admite entre 7 y 10 dígitos y el teléfono exactamente 10 dígitos; no se aceptan símbolos.
+15. **Datos de mascota:** El nombre se normaliza con capitalización por palabra y el sexo se limita a `Macho` o `Hembra`.
 
 ## Decisiones aún pendientes
 

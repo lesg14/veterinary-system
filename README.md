@@ -32,6 +32,10 @@ Endpoints disponibles:
 * `GET|PUT|DELETE /api/owners/{id}/`: consultar, actualizar y eliminar un propietario.
 * `GET|POST /api/pets/`: listar y crear mascotas.
 * `GET|PUT|DELETE /api/pets/{id}/`: consultar, actualizar y eliminar una mascota.
+* `GET|POST /api/species/?search={texto}`: listar o crear especies, con búsqueda opcional.
+* `GET|PUT|DELETE /api/species/{id}/`: consultar, actualizar y eliminar una especie.
+* `GET|POST /api/breeds/?species={id}&search={texto}`: listar o crear razas filtradas por especie y búsqueda.
+* `GET|PUT|DELETE /api/breeds/{id}/`: consultar, actualizar y eliminar una raza.
 * `GET|POST /api/professionals/`: listar y crear profesionales.
 * `GET|PUT|DELETE /api/professionals/{id}/`: consultar, actualizar y eliminar un profesional.
 * `GET|POST /api/consultation-types/`: listar y crear tipos de consulta.
@@ -46,7 +50,7 @@ La agenda usa el horario asumido de 08:00 a 18:00 y devuelve los espacios libres
 4. Iniciar el servidor de desarrollo: `npm run dev`
 5. Abrir `http://localhost:3000`.
 
-El frontend incluye la agenda diaria, filtros por fecha y profesional, espacios libres, resumen de citas, formulario de nueva cita y la pantalla `/gestion` para administrar propietarios, mascotas y profesionales. Utiliza un rewrite de Next.js para reenviar `/api/*` a Django y evitar CORS durante el desarrollo.
+El frontend incluye la agenda diaria, filtros por fecha y profesional, espacios libres, resumen de citas, formulario de nueva cita y la pantalla `/gestion` para administrar propietarios, mascotas, profesionales, especies y razas. Los selectores de especie y raza permiten búsqueda y filtran las razas según la especie seleccionada. Utiliza un rewrite de Next.js para reenviar `/api/*` a Django y evitar CORS durante el desarrollo.
 
 Para ejecutar el sistema completo, mantener dos terminales abiertas:
 
@@ -60,8 +64,20 @@ Para ejecutar el sistema completo, mantener dos terminales abiertas:
 * API REST y pruebas automatizadas: implementadas.
 * Interfaz Next.js: implementada para agenda, creación de citas, historial y administración CRUD.
 * CRUD de propietarios, mascotas y profesionales: implementado en la API y en la pantalla `/gestion`.
+* CRUD de especies y razas: implementado en la API y en la pantalla `/gestion`, con búsqueda y filtro por especie.
+* Catálogo inicial: 82 razas caninas y 46 razas felinas cargadas mediante migración.
+* Validación de propietarios: nombre capitalizado, tipo de identificación, identificación de 7 a 10 dígitos, teléfono de 10 dígitos y correo válido.
+* Validación de mascotas: nombre capitalizado, especie y raza buscables, raza dependiente de la especie y sexo limitado a `Macho` o `Hembra`.
 * CRUD de tipos de consulta: implementado en la API y en la pantalla `/gestion`. El tipo `Otro` exige una descripción del motivo.
 
 ## Decisiones arquitectónicas
 
 Las decisiones principales se encuentran en [docs/adr](docs/adr/). El ADR 003 documenta la validación en capas de las reglas de agenda y el ADR 004 documenta la decisión de implementar el CRUD mediante API REST y una pantalla administrativa dedicada.
+
+Migraciones recientes:
+
+* `0003_species_breed_catalogs`: convierte especie y raza de mascota en relaciones con catálogos.
+* `0004_seed_canine_feline_breeds`: carga las razas caninas y felinas iniciales.
+* `0005_owner_identification_type`: agrega tipo de identificación y restricciones de teléfono.
+
+Los últimos cambios se separaron en los commits `91755a5` (backend) y `3646085` (frontend). La validación verificada fue de 16 pruebas backend y build exitoso de Next.js.

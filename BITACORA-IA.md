@@ -46,6 +46,23 @@ Esta bitácora registra las interacciones con los agentes de IA durante el desar
 *   **Decisión (Aceptado/Rechazado):** Aceptado. Se implementó la regla de 20 espacios libres por jornada, la enumeración de tipos de consulta y el detalle de cita con nombre legible del paciente, profesional y tipo.
 *   **Qué quedó verificado:** `manage.py check`, pruebas de backend y build de Next.js exitosos. La agenda ahora cuenta espacios libres por bloque de 30 minutos y el detalle de la cita ya no expone IDs al usuario.
 
+## Sesión 10: 2026-09-20
+*   **Qué pedí:** Crear catálogos persistentes de especies y razas, permitir búsqueda y filtros, y dejar de utilizar datos estáticos en el formulario de mascotas.
+*   **Qué propuso el agente:** Crear las entidades `Species` y `Breed`, relacionarlas con `Pet`, exponer CRUD REST, cargar un catálogo inicial y agregar búsqueda por texto y filtro por especie en la configuración.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se aplicaron las migraciones `0003` y `0004`, se cargaron 82 razas caninas y 46 felinas, y se validó que una raza solo pueda utilizarse con su especie.
+*   **Qué quedó verificado:** Los endpoints de especies, razas y mascotas responden correctamente; 16 pruebas backend y el build frontend pasaron.
+
+## Sesión 11: 2026-09-20
+*   **Qué pedí:** Validar los formularios de propietario y mascota, incluyendo identificación, teléfono, correo, nombres, sexo y búsqueda de razas.
+*   **Qué propuso el agente:** Agregar tipo de identificación, restricciones numéricas, validación de correo, capitalización automática de nombres, selector de sexo y combobox buscable para especies y razas.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. Se implementó la migración `0005_owner_identification_type`, validación en backend y controles equivalentes en frontend.
+*   **Qué quedó verificado:** La identificación admite 7-10 dígitos, el teléfono exactamente 10, el backend rechaza combinaciones inválidas y el build de Next.js es exitoso.
+
+## Sesión 12: 2026-09-20
+*   **Qué pedí:** Separar los cambios en commits de backend y frontend.
+*   **Qué decidió el agente:** Crear `91755a5` para backend y `3646085` para frontend, manteniendo separados modelos, migraciones, API, pruebas y componentes de interfaz.
+*   **Decisión (Aceptado/Rechazado):** Aceptado. El repositorio quedó limpio después de validar 16 pruebas backend y el build frontend.
+
 ## Sesión 9: 2026-09-20
 *   **Qué pedí:** Dejar registrado el estado real del proyecto en la documentación autorizada.
 *   **Qué decidió el agente:** Actualizar los documentos de contexto (`AGENTS.md`, `ASSUMPTIONS.md` y esta bitácora) con el estado verificado del sistema en producción local.
