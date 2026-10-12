@@ -21,6 +21,7 @@ Dado que el requerimiento inicial omite ciertos detalles operativos necesarios p
 17. **Solapamiento de mascota:** Una mascota no puede tener citas que se crucen el mismo día, aunque los profesionales sean distintos.
 18. **Disponibilidad de citas:** El formulario consulta al backend horarios válidos cada 15 minutos según duración, jornada, profesional, mascota y citas existentes. Solo se ofrecen horarios donde la consulta puede finalizar dentro de la jornada.
 19. **Histórico global:** Todas las citas se conservan y pueden filtrarse por estado, mascota, profesional, texto y rango de fechas desde `/historial`.
+20. **No agendar en el pasado:** No se permite crear ni reagendar una cita con inicio anterior a la fecha y hora actual. La disponibilidad no ofrece fechas pasadas ni horas ya transcurridas del día actual.
 
 ## Decisiones aún pendientes
 
