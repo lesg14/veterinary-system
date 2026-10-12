@@ -103,6 +103,11 @@ def cancel_appointment(
 
 def get_available_starts(*, day: date, professional: Professional | int, duration_minutes: int, pet: Pet | int | None = None, after: datetime | None = None) -> list[datetime]:
     """Devuelve inicios de 15 minutos que caben completos en la jornada y no se solapan."""
+    current_time = timezone.localtime(timezone.now())
+    if day < current_time.date():
+        return []
+    if after is None and day == current_time.date():
+        after = current_time
     professional_id = professional.pk if isinstance(professional, Professional) else professional
     intervals = clinic_datetimes_for_day(day)
     pet_id = pet.pk if isinstance(pet, Pet) else pet

@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -62,6 +63,37 @@ class AppointmentServiceTests(TestCase):
         return timezone.make_aware(
             datetime.combine(day or datetime(2026, 9, 21).date(), time(hour, minute))
         )
+
+    def setUp(self):
+        fixed_now = timezone.make_aware(datetime(2026, 9, 20, 8, 0))
+        patcher = patch("django.utils.timezone.now", return_value=fixed_now)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_past_appointment_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            create_appointment(
+                pet=self.pet,
+                professional=self.professional,
+                consultation_type=self.general,
+                starts_at=self.appointment_time(9, day=datetime(2026, 9, 19).date()),
+            )
+
+    def test_availability_does_not_return_past_dates_or_elapsed_times(self):
+        self.assertEqual(
+            get_available_starts(
+                day=datetime(2026, 9, 19).date(),
+                professional=self.professional,
+                duration_minutes=30,
+            ),
+            [],
+        )
+        same_day_starts = get_available_starts(
+            day=datetime(2026, 9, 20).date(),
+            professional=self.professional,
+            duration_minutes=30,
+        )
+        self.assertTrue(all(start > self.appointment_time(8, day=datetime(2026, 9, 20).date()) for start in same_day_starts))
 
     def test_duration_is_calculated_from_consultation_type(self):
         appointment = create_appointment(

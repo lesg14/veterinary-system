@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 
 from veterinary.models import Appointment, Breed, ConsultationType, Owner, Pet, Professional, Species, Visit
 from veterinary.services.appointments import create_appointment
@@ -41,6 +42,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
             setattr(instance, field, value)
         instance.save()
         return instance
+
+    def validate_starts_at(self, value):
+        if value < timezone.now():
+            raise serializers.ValidationError(
+                "No se pueden agendar citas en fechas u horas anteriores a la fecha y hora actual."
+            )
+        return value
 
 
 class OwnerSerializer(serializers.ModelSerializer):

@@ -345,7 +345,9 @@ class Appointment(models.Model):
             calculated_end = self.calculate_end()
             local_start = timezone.localtime(self.starts_at)
             local_end = timezone.localtime(calculated_end)
-            if local_start.date() != local_end.date():
+            if local_start < timezone.localtime(timezone.now()):
+                errors["starts_at"] = "No se pueden agendar citas en fechas u horas anteriores a la fecha y hora actual."
+            elif local_start.date() != local_end.date():
                 errors["starts_at"] = "La cita debe finalizar el mismo día."
             elif not any(
                 local_start.time() >= opening and local_end.time() <= closing

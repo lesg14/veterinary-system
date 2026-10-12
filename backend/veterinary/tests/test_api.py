@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils import timezone
@@ -25,6 +26,10 @@ class VeterinaryApiTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        fixed_now = timezone.make_aware(datetime(2026, 9, 20, 8, 0))
+        patcher = patch("django.utils.timezone.now", return_value=fixed_now)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.starts_at = timezone.make_aware(
             datetime.combine(datetime(2026, 9, 21).date(), time(9, 0))
         )
@@ -44,6 +49,20 @@ class VeterinaryApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["status"], "SCHEDULED")
         self.assertEqual(response.data["ends_at"], "2026-09-21T09:30:00-05:00")
+
+    def test_api_rejects_appointment_in_past(self):
+        response = self.client.post(
+            "/api/appointments/",
+            {
+                "pet": self.pet.id,
+                "professional": self.professional.id,
+                "consultation_type": self.consultation_type.id,
+                "starts_at": (self.starts_at - timedelta(days=1)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("starts_at", response.data)
 
     def test_pet_cannot_overlap_appointments_across_professionals(self):
         other_professional = Professional.objects.create(
