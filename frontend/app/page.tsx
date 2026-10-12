@@ -105,7 +105,10 @@ function formatDate(value: string) {
 }
 
 function toDateInput(value: Date) {
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default function Home() {
@@ -1103,18 +1106,19 @@ function AppointmentModal({
             onChange={(value) => setForm({ ...form, consultation_type: value })}
           />
           <label>
-            Fecha
-            <input
-              required
-              type="date"
-              value={form.starts_at.slice(0, 10)}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  starts_at: `${event.target.value}T${form.starts_at.slice(11, 16) || "08:00"}`,
-                })
-              }
-            />
+              Fecha
+              <input
+                required
+                type="date"
+                min={toDateInput(new Date())}
+                value={form.starts_at.slice(0, 10)}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    starts_at: `${event.target.value}T${form.starts_at.slice(11, 16) || "08:00"}`,
+                  })
+                }
+              />
           </label>
           <label>
             Hora disponible
