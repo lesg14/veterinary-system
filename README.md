@@ -25,7 +25,7 @@ Endpoints disponibles:
 
 * `POST /api/appointments/`: crear una cita.
 * `POST /api/appointments/{id}/cancel/`: cancelar una cita o marcarla como inasistencia.
-* `GET /api/appointments/availability/?date=YYYY-MM-DD&professional_id={id}&pet_id={id}&duration_minutes={minutos}`: consultar horas válidas según duración, jornada y solapamientos.
+* `GET /api/appointments/availability/?date=YYYY-MM-DD&professional_id={id}&pet_id={id}&duration_minutes={minutos}`: consultar horas válidas según duración, jornada y solapamientos; omite fechas pasadas y horas ya transcurridas del día actual.
 * `GET /api/appointments/history/?status={estado}&search={texto}&professional_id={id}&pet_id={id}&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`: consultar y filtrar todo el histórico de citas.
 * `GET /api/agenda/?date=YYYY-MM-DD`: consultar la agenda diaria y espacios libres.
 * `GET /api/agenda/?date=YYYY-MM-DD&professional_id={id}`: filtrar la agenda por profesional.
@@ -44,7 +44,7 @@ Endpoints disponibles:
 * `GET|PUT|DELETE /api/consultation-types/{id}/`: consultar, actualizar y eliminar un tipo de consulta.
 * `GET /api/visits/`: consultar las atenciones clínicas registradas.
 
-La agenda usa franjas comunes para todos los profesionales: lunes a viernes de 08:00 a 12:00 y de 13:00 a 18:00; festivos de 10:00 a 12:00 y de 13:00 a 16:00; sábados y domingos sin jornada. Devuelve intervalos continuos libres y nunca ofrece el descanso de 12:00 a 13:00. La base de datos debe ser PostgreSQL porque la restricción de solapamiento utiliza `btree_gist` y rangos `tstzrange`.
+La agenda usa franjas comunes para todos los profesionales: lunes a viernes de 08:00 a 12:00 y de 13:00 a 18:00; festivos de 10:00 a 12:00 y de 13:00 a 16:00; sábados y domingos sin jornada. Devuelve intervalos continuos libres y nunca ofrece el descanso de 12:00 a 13:00. No se pueden crear ni reagendar citas en fechas u horas pasadas. La disponibilidad considera la duración real de la consulta, al profesional, a la mascota y las citas existentes. La base de datos debe ser PostgreSQL porque las restricciones de solapamiento usan `btree_gist` y rangos `tstzrange`.
 
 ### 2. Levantar el Frontend (Next.js)
 1. Abrir otra terminal y navegar a la carpeta `frontend`.
@@ -70,6 +70,7 @@ Para ejecutar el sistema completo, mantener dos terminales abiertas:
 * CRUD de especies y razas: implementado en la API y en la pantalla `/gestion`, con búsqueda y filtro por especie.
 * Catálogo inicial: 82 razas caninas y 46 razas felinas cargadas mediante migración.
 * Validación de propietarios: nombre capitalizado, tipo de identificación, identificación de 7 a 10 dígitos, teléfono de 10 dígitos y correo válido.
+* Validación de fechas: el backend rechaza citas nuevas o reagendamientos anteriores al momento actual; el selector de fecha no permite días pasados.
 * Validación de mascotas: nombre capitalizado, especie y raza buscables, raza dependiente de la especie y sexo limitado a `Macho` o `Hembra`.
 * Agenda: disponibilidad por intervalos continuos, duración real de cada consulta, descanso de mediodía, fines de semana cerrados y horario reducido en festivos.
 * Histórico de citas: disponible en `/historial`, conservando programadas, atendidas, canceladas e inasistencias con filtros.
@@ -88,5 +89,6 @@ Migraciones recientes:
 * `0005_owner_identification_type`: agrega tipo de identificación y restricciones de teléfono.
 * `0006_professional_identification_validation`: agrega validaciones de profesionales.
 * `0007_pet_appointment_overlap_constraint`: protege el solapamiento de citas de una misma mascota.
+* `0008_alter_pet_sex`: restringe el sexo de mascota a `Macho` o `Hembra`.
 
-Los cambios administrativos se separaron en los commits `91755a5` (backend) y `3646085` (frontend). El estado actual fue validado con 23 pruebas backend y build exitoso de Next.js.
+La regla de fechas pasadas se validó con 26 pruebas backend y build exitoso de Next.js. Ejecuta `py -3.12 manage.py test veterinary` para repetir la suite.
